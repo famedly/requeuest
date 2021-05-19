@@ -1,0 +1,17 @@
+[package]
+name = "requeuest"
+version = "0.1.0"
+edition = "2018"
+authors = ["Amanda Graven <amanda@amandag.net>"]
+description = "Queue for HTTP requests using postgres as backing store"
+readme = "README.md"
+
+[dependencies]
+http-serde = "1.0"
+reqwest = { version = "0.11", default_features = false, features = ["rustls-tls"] }
+sqlxmq = "0.1"
+serde = { version = "1.0", features = ["derive"] }
+url = { version = "2", features = ["serde"] }
+# These are only needed to use values returned by sqlxmq
+sqlx = "0.5"
+uuid = { version = "0.8", features = ["v4"] }
