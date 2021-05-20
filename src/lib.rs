@@ -12,6 +12,11 @@ pub use uuid::Uuid;
 
 pub use job::Request;
 
+/// Runs the SQL migrations this library needs.
+pub async fn migrate(pool: &Pool<Postgres>) -> Result<(), sqlx::migrate::MigrateError> {
+	sqlx::migrate!().run(pool).await
+}
+
 /// Spawns a listener which runs jobs on the given channels until the returned handle is dropped.
 /// Alternatively, the `JoinHandle` contained in the returned handle can be explicitly joined.
 pub async fn listener(
