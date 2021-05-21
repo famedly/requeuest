@@ -4,6 +4,8 @@
 pub mod error;
 pub(crate) mod job;
 
+use error::SpawnError;
+
 pub use reqwest::{header::HeaderMap, Method};
 use sqlx::{Pool, Postgres};
 use sqlxmq::JobRegistry;
@@ -104,18 +106,15 @@ pub async fn response(
 	pool: &Pool<Postgres>,
 	channel: &'static str,
 	request: Request,
-) -> Result<reqwest::Response, Box<dyn std::error::Error>> {
+) -> Result<reqwest::Response, SpawnError> {
 	// Put a sender in the sender map so the job can use it
 	let uuid = Uuid::new_v4();
 	let (sender, receiver) = tokio::sync::oneshot::channel();
-	let sender_map = job::response_senders().await;
-	let mut lock = match sender_map.lock() {
-		Ok(lock) => lock,
-		// TODO: log/recover from poisoning better
-		Err(poisoned) => poisoned.into_inner(),
-	};
-	lock.insert(uuid, sender);
-	drop(lock);
+	job::response_senders()
+		.await
+		.lock()
+		.unwrap()
+		.insert(uuid, sender);
 
 	// Spawn the job
 	job::http_response

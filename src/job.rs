@@ -79,17 +79,15 @@ pub async fn http_response(mut job: CurrentJob) -> JobResult {
 
 	// complete the job if request was successful
 	if response.status() == StatusCode::OK {
-		// TODO: some kind of checkpoint here
-		let sender_map = response_senders().await;
-		{
-			let mut lock = match sender_map.lock() {
-				Ok(lock) => lock,
-				Err(poisoned) => poisoned.into_inner(),
-			};
-			let sender = lock.remove(&job.id()).ok_or(JobError::MissingSender)?;
-			sender.send(response).or(Err(JobError::MissingReceiver))?;
-		}
 		job.complete().await?;
+
+		let sender_map = response_senders().await;
+		let sender = sender_map
+			.lock()
+			.unwrap()
+			.remove(&job.id())
+			.ok_or(JobError::MissingSender)?;
+		sender.send(response).or(Err(JobError::MissingReceiver))?;
 	}
 
 	Ok(())
