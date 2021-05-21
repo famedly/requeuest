@@ -23,7 +23,7 @@ pub async fn listener(
 	pool: &Pool<Postgres>,
 	channels: &[&str],
 ) -> Result<sqlxmq::OwnedHandle, sqlx::Error> {
-	let registry = JobRegistry::new(&[job::http]);
+	let registry = JobRegistry::new(&[job::http, job::http_response]);
 	registry
 		.runner(pool)
 		.set_channel_names(channels)
@@ -96,4 +96,34 @@ pub async fn from_reqwest<'a>(
 		headers: http.headers().to_owned(),
 	};
 	request(pool, channel, req).await
+}
+
+/// Adds the given request to the queue, and awaits until the request has been successfully
+/// completed.
+pub async fn response(
+	pool: &Pool<Postgres>,
+	channel: &'static str,
+	request: Request,
+) -> Result<reqwest::Response, Box<dyn std::error::Error>> {
+	// Put a sender in the sender map so the job can use it
+	let uuid = Uuid::new_v4();
+	let (sender, receiver) = tokio::sync::oneshot::channel();
+	let sender_map = job::response_senders().await;
+	let mut lock = match sender_map.lock() {
+		Ok(lock) => lock,
+		// TODO: log/recover from poisoning better
+		Err(poisoned) => poisoned.into_inner(),
+	};
+	lock.insert(uuid, sender);
+	drop(lock);
+
+	// Spawn the job
+	job::http_response
+		.builder_with_id(uuid)
+		.set_json(&request)
+		.unwrap()
+		.set_channel_name(channel)
+		.spawn(pool)
+		.await?;
+	Ok(receiver.await?)
 }
