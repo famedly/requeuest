@@ -7,12 +7,13 @@ description = "Queue for HTTP requests using postgres as backing store"
 readme = "README.md"
 
 [dependencies]
+base64 = "0.13"
 http-serde = "1.0"
 reqwest = { version = "0.11", default_features = false, features = ["rustls-tls"] }
+sqlx = "0.5"
 sqlxmq = "0.1"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 tokio = { version = "1.6", features = ["sync", "parking_lot"] }
 url = { version = "2", features = ["serde"] }
-# These are only needed to use values returned by sqlxmq
-sqlx = "0.5"
 uuid = { version = "0.8", features = ["v4"] }

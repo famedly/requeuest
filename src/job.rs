@@ -1,14 +1,12 @@
 //! Contains the definition of the job which sends http requests.
 
-use crate::error::JobError;
+use crate::{error::JobError, request::Request};
 
 use std::{collections::HashMap, sync::Mutex};
 
-use reqwest::{header::HeaderMap, Method, StatusCode};
-use serde::{Deserialize, Serialize};
+use reqwest::StatusCode;
 use sqlxmq::{job, CurrentJob};
 use tokio::sync::{oneshot, OnceCell};
-use url::Url;
 use uuid::Uuid;
 
 /// Alias for the result type sqlxmq jobs expect.
@@ -24,21 +22,6 @@ async fn senders_init() -> ResponseSender {
 
 pub(crate) async fn response_senders<'a>() -> &'a ResponseSender {
 	RESPONSE_SENDERS.get_or_init(senders_init).await
-}
-
-/// An HTTP request to be sent through the job queue.
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Request {
-	/// The url to send the request to.
-	pub url: Url,
-	/// The body of the request.
-	pub body: Option<Vec<u8>>,
-	/// The HTTP method to connect with
-	#[serde(with = "http_serde::method")]
-	pub method: Method,
-	/// The HTTP headers to set for the request.
-	#[serde(with = "http_serde::header_map")]
-	pub headers: HeaderMap,
 }
 
 /// The function which runs HTTP jobs and actually sends the requests.

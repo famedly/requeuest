@@ -12,5 +12,18 @@ let listener = requeuest::listener(&pool, "my_service").await?;
 ```
 After the listener has been started, you can begin spawning jobs. Here we send a get request to an example address:
 ```rust
-requeuest::get(&pool, "my_service", Url::parse("https://example.com/_api/foo/bar"), HeaderMap::new()).await?;
+use requeuest::{HeaderMap, Request, Url};
+
+Request::get(Url::parse("https://example.com/_api/foo/bar")?, HeaderMap::new())
+	.spawn(&pool, "my_service")
+	.await?;
 ```
+You can also also get the response back from a successfully delivered request.
+```rust
+use requeuest::{HeaderMap, Request, Url};
+
+let response = Request::post(Url::parse("https://example.com/_api/bar/foo")?, Vec::from(b"some data"), HeaderMap::new())
+	.spawn_returning(&pool, "my_service")
+	.await?;
+```
+Note that the `spawn_returning` method *will* wait indefinitely until a successful response is received, so this will wait forever if a request is sent to e.g. an unregistered domain, or sends data to an API which will always result in a non-200 response code.
