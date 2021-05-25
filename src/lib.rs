@@ -5,6 +5,7 @@ pub mod error;
 pub(crate) mod job;
 pub mod request;
 
+use error::SpawnError;
 pub use request::Request;
 
 pub use reqwest::{header::HeaderMap, Method};
@@ -38,7 +39,7 @@ pub async fn get<'a>(
 	channel: &'static str,
 	url: Url,
 	headers: HeaderMap,
-) -> Result<Uuid, sqlx::Error> {
+) -> Result<Uuid, SpawnError> {
 	let req = Request::get(url, headers);
 	req.spawn(pool, channel).await
 }
@@ -51,7 +52,7 @@ pub async fn post<'a>(
 	url: Url,
 	headers: HeaderMap,
 	body: Vec<u8>,
-) -> Result<Uuid, sqlx::Error> {
+) -> Result<Uuid, SpawnError> {
 	let req = Request::post(url, body, headers);
 	req.spawn(pool, channel).await
 }
@@ -62,7 +63,7 @@ pub async fn from_reqwest<'a>(
 	pool: &'a Pool<Postgres>,
 	channel: &'static str,
 	http: reqwest::Request,
-) -> Result<Uuid, sqlx::Error> {
+) -> Result<Uuid, SpawnError> {
 	let req = Request {
 		url: http.url().to_owned(),
 		// TODO: don't ignore the stream case

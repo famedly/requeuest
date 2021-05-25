@@ -1,0 +1,28 @@
+include:
+  - project 'famedly/templates/ci-cd'
+    ref: main
+    file: '/rust.yml'
+
+stages:
+  - test
+  - doc
+
+# Runs `cargo fmt -- --check`, `cargo check`,
+# `cargo clippy` and `cargo test --all --verbose`
+cargo-check:
+  extends: .cargo_check
+
+pages:
+  extends: .cargo_common
+  stage: doc
+  cache:
+    paths:
+      - "target/doc/"
+
+  script:
+    - cargo doc -p requeuest
+    - mv target/doc public
+
+  artifacts:
+    paths:
+      - "public/"

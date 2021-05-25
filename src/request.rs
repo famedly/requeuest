@@ -30,14 +30,15 @@ impl Request {
 		self,
 		pool: &Pool<Postgres>,
 		channel: &'static str,
-	) -> Result<Uuid, sqlx::Error> {
-		job::http
+	) -> Result<Uuid, SpawnError> {
+		let uuid = job::http
 			.builder()
-			.set_json(&self)
-			.unwrap()
+			.set_json(&self)?
 			.set_channel_name(channel)
+			.set_retries(100_000)
 			.spawn(pool)
-			.await
+			.await?;
+		Ok(uuid)
 	}
 
 	/// Adds the request to the queue, and awaits until the request has been successfully
