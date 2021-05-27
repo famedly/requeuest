@@ -1,4 +1,51 @@
 //! Requeuest is a library for queueing the sending of HTTP requests.
+//!
+//! ## Getting started
+//! Assuming you already have an `sqlx` connection to a postgres database, you will first need to
+//! run migrations so the needed tables and SQL functions can get set up on your postgres database.
+//! ```no_run
+//! # async fn test(pool: &sqlx::Pool<sqlx::Postgres>) -> Result<(), sqlx::migrate::MigrateError> {
+//! requeuest::migrate(&pool).await?;
+//! # Ok(())
+//! # }
+//! ```
+//! Once that's taken care of, start by getting a handle to a listener for a set of channels. This
+//! is what will execute jobs in the background. It will keep doing so until it is dropped.
+//! The handle contains a tokio `JoinHandle` you can interface with directly if needed.
+//! ```no_run
+//! # async fn test(pool: &sqlx::Pool<sqlx::Postgres>) -> Result<(), sqlx::Error> {
+//! let listener = requeuest::listener(&pool, &["my_service"]).await?;
+//! # Ok(())
+//! # }
+//! ```
+//! After the listener has been started, you can begin spawning jobs. Here we send a get request to
+//! an example address:
+//! ```no_run
+//! use requeuest::{HeaderMap, Request, Url};
+//!
+//! # async fn test(pool: &sqlx::Pool<sqlx::Postgres>) -> Result<(), Box<dyn std::error::Error>> {
+//! Request::get(Url::parse("https://example.com/_api/foo/bar")?, HeaderMap::new())
+//!     .spawn(&pool, "my_service")
+//!     .await?;
+//! # Ok(())
+//! # }
+//! ```
+//! You can also also get the response back from a successfully delivered request.
+//! ```no_run
+//! use requeuest::{HeaderMap, Request, Url};
+//!
+//! # async fn test(pool: &sqlx::Pool<sqlx::Postgres>) -> Result<(), Box<dyn std::error::Error>> {
+//! let response = Request::post(Url::parse("https://example.com/_api/bar/foo")?, Vec::from("some data"), HeaderMap::new())
+//!     .spawn_returning(&pool, "my_service")
+//!     .await?;
+//! # Ok(())
+//! # }
+//! ```
+//! Note that the `spawn_returning` method *will* wait indefinitely (or to be precise, roughly
+//! 10^293 years) until a successful response is received, so this will wait forever if a request
+//! is sent to e.g. an unregistered domain, or sends data to an API which will always result in a
+//! non-200 response code.
+
 #![deny(missing_docs)]
 
 pub mod error;

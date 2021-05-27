@@ -96,6 +96,36 @@ impl Request {
 			headers,
 		}
 	}
+
+	/// Constructs a `HEAD` request to be sent to the given url.
+	pub fn head(url: Url, headers: HeaderMap) -> Self {
+		Self {
+			url,
+			body: None,
+			method: Method::HEAD,
+			headers,
+		}
+	}
+
+	/// Constructs a `DELETE` request to be sent to the given url.
+	pub fn delete(url: Url, body: Option<Vec<u8>>, headers: HeaderMap) -> Self {
+		Self {
+			url,
+			body,
+			method: Method::DELETE,
+			headers,
+		}
+	}
+
+	/// Constructs a `PUT` request to be sent to the given url.
+	pub fn put(url: Url, body: Vec<u8>, headers: HeaderMap) -> Self {
+		Self {
+			url,
+			body: Some(body),
+			method: Method::PUT,
+			headers,
+		}
+	}
 }
 
 mod base64_encode {
