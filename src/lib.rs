@@ -9,35 +9,38 @@
 //! # Ok(())
 //! # }
 //! ```
-//! Once that's taken care of, start by getting a handle to a listener for a set of channels. This
-//! is what will execute jobs in the background. It will keep doing so until it is dropped.
-//! The handle contains a tokio `JoinHandle` you can interface with directly if needed.
+//! Once that's taken care of, start by constructing a client. This is what you will use to spawn
+//! requests, an what will execute jobs in the background. It will keep doing so until it is
+//! dropped. The client contains a tokio `JoinHandle` which you can remove from the client with
+//! [`Client::take_listener`](crate::Client::take_listener) if you want the listener to keep
+//! running after the client has dropped, or otherwise interface with the background task directly.
 //! ```no_run
-//! # async fn test(pool: &sqlx::Pool<sqlx::Postgres>) -> Result<(), sqlx::Error> {
-//! let listener = requeuest::listener(&pool, &["my_service"]).await?;
+//! # async fn test(pool: sqlx::Pool<sqlx::Postgres>) -> Result<(), sqlx::Error> {
+//! use requeuest::Client;
+//!
+//! let client = Client::new(pool, &["my_service"]).await?;
 //! # Ok(())
 //! # }
 //! ```
-//! After the listener has been started, you can begin spawning jobs. Here we send a get request to
-//! an example address:
+//! After the client has been constructed, you can begin spawning jobs. Here we send a get request
+//! to an example address:
 //! ```no_run
-//! use requeuest::{HeaderMap, Request, Url};
+//! use requeuest::{HeaderMap, Request};
 //!
-//! # async fn test(pool: &sqlx::Pool<sqlx::Postgres>) -> Result<(), Box<dyn std::error::Error>> {
-//! Request::get(Url::parse("https://example.com/_api/foo/bar")?, HeaderMap::new())
-//!     .spawn(&pool, "my_service")
-//!     .await?;
+//! # async fn test(client: requeuest::Client) -> Result<(), Box<dyn std::error::Error>> {
+//! let request = Request::get("https://foo.bar/_api/baz".parse()?, HeaderMap::new());
+//! client.spawn("my_service", &request).await?;
 //! # Ok(())
 //! # }
 //! ```
 //! You can also also get the response back from a successfully delivered request.
 //! ```no_run
-//! use requeuest::{HeaderMap, Request, Url};
+//! # use requeuest::Request;
 //!
-//! # async fn test(pool: &sqlx::Pool<sqlx::Postgres>) -> Result<(), Box<dyn std::error::Error>> {
-//! let response = Request::post(Url::parse("https://example.com/_api/bar/foo")?, Vec::from("some data"), HeaderMap::new())
-//!     .spawn_returning(&pool, "my_service")
-//!     .await?;
+//! # async fn test(client: requeuest::Client) -> Result<(), Box<dyn std::error::Error>> {
+//! // You can skip the HeaderMap import by invoking the constructor via the Default trait
+//! let request = Request::post("https://example.com/_api/bar/foo".parse()?, Vec::from("some data"), Default::default());
+//! let response = client.spawn_returning("my_service", &request).await?;
 //! # Ok(())
 //! # }
 //! ```
@@ -48,75 +51,20 @@
 
 #![deny(missing_docs)]
 
+pub mod client;
 pub mod error;
 pub(crate) mod job;
 pub mod request;
 
-use error::SpawnError;
+pub use client::Client;
 pub use request::Request;
 
 pub use reqwest::{header::HeaderMap, Method};
 use sqlx::{Pool, Postgres};
-use sqlxmq::JobRegistry;
 pub use url::Url;
 pub use uuid::Uuid;
 
 /// Runs the SQL migrations this library needs.
 pub async fn migrate(pool: &Pool<Postgres>) -> Result<(), sqlx::migrate::MigrateError> {
 	sqlx::migrate!().run(pool).await
-}
-
-/// Spawns a listener which runs jobs on the given channels until the returned handle is dropped.
-/// Alternatively, the `JoinHandle` contained in the returned handle can be explicitly joined.
-pub async fn listener(
-	pool: &Pool<Postgres>,
-	channels: &[&str],
-) -> Result<sqlxmq::OwnedHandle, sqlx::Error> {
-	let registry = JobRegistry::new(&[job::http, job::http_response]);
-	registry
-		.runner(pool)
-		.set_channel_names(channels)
-		.run()
-		.await
-}
-
-/// Adds a `GET` request for the given url to the queue on the specified channel.
-pub async fn get<'a>(
-	pool: &'a Pool<Postgres>,
-	channel: &'static str,
-	url: Url,
-	headers: HeaderMap,
-) -> Result<Uuid, SpawnError> {
-	let req = Request::get(url, headers);
-	req.spawn(pool, channel).await
-}
-
-/// Adds a `POST` request for the given url with the given body to the queue on the specified
-/// channel.
-pub async fn post<'a>(
-	pool: &'a Pool<Postgres>,
-	channel: &'static str,
-	url: Url,
-	headers: HeaderMap,
-	body: Vec<u8>,
-) -> Result<Uuid, SpawnError> {
-	let req = Request::post(url, body, headers);
-	req.spawn(pool, channel).await
-}
-
-/// Converts a request from the reqwest crate into the internal request format and adds it to the
-/// request queue on the given channel. The request body will be ignored if its a stream.
-pub async fn from_reqwest<'a>(
-	pool: &'a Pool<Postgres>,
-	channel: &'static str,
-	http: reqwest::Request,
-) -> Result<Uuid, SpawnError> {
-	let req = Request {
-		url: http.url().to_owned(),
-		// TODO: don't ignore the stream case
-		body: http.body().and_then(|b| b.as_bytes()).map(|b| b.to_vec()),
-		method: http.method().to_owned(),
-		headers: http.headers().to_owned(),
-	};
-	req.spawn(pool, channel).await
 }

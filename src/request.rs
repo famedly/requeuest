@@ -4,7 +4,7 @@ use crate::{error::SpawnError, job};
 
 use reqwest::{header::HeaderMap, Method};
 use serde::{Deserialize, Serialize};
-use sqlx::{Pool, Postgres};
+use sqlx::Postgres;
 use url::Url;
 use uuid::Uuid;
 
@@ -25,15 +25,17 @@ pub struct Request {
 }
 
 impl Request {
-	/// Adds the given request to the queue on the given channel. Returns the uuid of the spawned job.
-	pub async fn spawn(
-		self,
-		pool: &Pool<Postgres>,
+	/// Adds the given request to the queue on the specified channel using the given executor.
+	/// Returns the uuid of the spawned job. In most cases you probably want to use
+	/// [`Client::spawn`](crate::Client::spawn) instead.
+	pub async fn spawn_with<'a, E: sqlx::Executor<'a, Database = Postgres>>(
+		&'a self,
+		pool: E,
 		channel: &'static str,
 	) -> Result<Uuid, SpawnError> {
 		let uuid = job::http
 			.builder()
-			.set_json(&self)?
+			.set_json(self)?
 			.set_channel_name(channel)
 			.set_retries(100_000)
 			.spawn(pool)
@@ -41,11 +43,12 @@ impl Request {
 		Ok(uuid)
 	}
 
-	/// Adds the request to the queue, and awaits until the request has been successfully
-	/// completed, returning the received response.
-	pub async fn spawn_returning(
-		self,
-		pool: &Pool<Postgres>,
+	/// Adds the request to the queue using the given executor, and awaits until the request has
+	/// been successfully completed, returning the received response. In most cases you probably
+	/// want to use [`Client::spawn`](crate::Client::spawn) instead.
+	pub async fn spawn_returning_with<'a, E: sqlx::Executor<'a, Database = Postgres>>(
+		&'a self,
+		pool: E,
 		channel: &'static str,
 	) -> Result<reqwest::Response, SpawnError> {
 		// Put a sender in the sender map so the job can use it
@@ -60,7 +63,7 @@ impl Request {
 		// Spawn the job
 		job::http_response
 			.builder_with_id(uuid)
-			.set_json(&self)?
+			.set_json(self)?
 			.set_channel_name(channel)
 			.spawn(pool)
 			.await?;
@@ -124,6 +127,19 @@ impl Request {
 			body: Some(body),
 			method: Method::PUT,
 			headers,
+		}
+	}
+
+	/// Convert a reqwest request into a requeuest request.
+	pub fn from_reqwest(foreign: reqwest::Request) -> Self {
+		Self {
+			url: foreign.url().to_owned(),
+			body: foreign
+				.body()
+				.and_then(|b| b.as_bytes())
+				.map(|b| b.to_vec()),
+			method: foreign.method().to_owned(),
+			headers: foreign.headers().to_owned(),
 		}
 	}
 }
