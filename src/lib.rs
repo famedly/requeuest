@@ -1,4 +1,6 @@
-//! Requeuest is a library for queueing the sending of HTTP requests.
+//! Requeuest is a library for queueing the sending of HTTP requests. It's built with the
+//! [sqlxmq](https://docs.rs/sqlxmq) crate, which is a message queue that uses a postgres database
+//! for storing messages.
 //!
 //! ## Getting started
 //! Assuming you already have an `sqlx` connection to a postgres database, you will first need to
