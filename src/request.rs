@@ -14,7 +14,6 @@ pub struct Request {
 	/// The url to send the request to.
 	pub url: Url,
 	/// The body of the request.
-	#[serde(with = "base64_encode")]
 	pub body: Option<Vec<u8>>,
 	/// The HTTP method to connect with
 	#[serde(with = "http_serde::method")]
@@ -35,7 +34,7 @@ impl Request {
 	) -> Result<Uuid, SpawnError> {
 		let uuid = job::http
 			.builder()
-			.set_json(self)?
+			.set_raw_bytes(&bincode::serialize(self)?)
 			.set_channel_name(channel)
 			.set_retries(100_000)
 			.spawn(pool)
@@ -63,7 +62,7 @@ impl Request {
 		// Spawn the job
 		job::http_response
 			.builder_with_id(uuid)
-			.set_json(self)?
+			.set_raw_bytes(&bincode::serialize(self)?)
 			.set_channel_name(channel)
 			.spawn(pool)
 			.await?;
@@ -140,58 +139,6 @@ impl Request {
 				.map(|b| b.to_vec()),
 			method: foreign.method().to_owned(),
 			headers: foreign.headers().to_owned(),
-		}
-	}
-}
-
-mod base64_encode {
-	use base64::DecodeError;
-	use serde::{
-		self,
-		de::{Error, Unexpected},
-		Deserialize, Deserializer, Serializer,
-	};
-
-	pub fn serialize<S>(body: &Option<Vec<u8>>, serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: Serializer,
-	{
-		let body = match *body {
-			Some(ref body) => body,
-			None => return serializer.serialize_none(),
-		};
-		let mut buffer = String::with_capacity((body.len() * 4) / 3);
-		base64::encode_config_buf(body, base64::STANDARD, &mut buffer);
-		serializer.serialize_some(&buffer)
-	}
-
-	pub fn deserialize<'d, D>(deserializer: D) -> Result<Option<Vec<u8>>, D::Error>
-	where
-		D: Deserializer<'d>,
-	{
-		let encoded = Option::<String>::deserialize(deserializer)?;
-		match encoded {
-			Some(ref encoded) => {
-				let mut buffer: Vec<u8> = Vec::with_capacity((encoded.len() * 3) / 4);
-				if let Err(e) = base64::decode_config_buf(encoded, base64::STANDARD, &mut buffer) {
-					let string = match e {
-						DecodeError::InvalidByte(idx, val) => {
-							format!("illegal byte {:#X} at {}", val, idx)
-						}
-						DecodeError::InvalidLength => String::from("invalid trailing data"),
-						DecodeError::InvalidLastSymbol(val, idx) => {
-							format!("ill-formed final octet with byte {:#X} at {}", val, idx)
-						}
-					};
-					return Err(D::Error::invalid_value(
-						Unexpected::Other(&string),
-						&"valid base64 string",
-					));
-				}
-
-				Ok(Some(buffer))
-			}
-			None => Ok(None),
 		}
 	}
 }

@@ -74,7 +74,7 @@ impl Client {
 	) -> Result<Uuid, SpawnError> {
 		let uuid = job::http
 			.builder()
-			.set_json(request)?
+			.set_raw_bytes(&bincode::serialize(request)?)
 			.set_channel_name(channel)
 			.set_retries(100_000)
 			.spawn(&self.pool)
@@ -103,7 +103,7 @@ impl Client {
 		// Spawn the job
 		job::http_response
 			.builder_with_id(uuid)
-			.set_json(request)?
+			.set_raw_bytes(&bincode::serialize(request)?)
 			.set_channel_name(channel)
 			.spawn(&self.pool)
 			.await?;

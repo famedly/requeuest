@@ -28,7 +28,8 @@ pub(crate) async fn response_senders<'a>() -> &'a ResponseSender {
 #[job(name = "http")]
 pub async fn http(mut job: CurrentJob) -> JobResult {
 	// validate the job payload
-	let request: Request = job.json()?.ok_or(JobError::MissingRequest)?;
+	let payload = job.raw_bytes().ok_or(JobError::MissingRequest)?;
+	let request: Request = bincode::deserialize(payload)?;
 
 	// construct and send the request
 	let client = reqwest::Client::new();
@@ -50,7 +51,8 @@ pub async fn http(mut job: CurrentJob) -> JobResult {
 #[job(name = "http_response")]
 pub async fn http_response(mut job: CurrentJob) -> JobResult {
 	// validate the job payload
-	let request: Request = job.json()?.ok_or(JobError::MissingRequest)?;
+	let payload = job.raw_bytes().ok_or(JobError::MissingRequest)?;
+	let request: Request = bincode::deserialize(payload)?;
 
 	// construct and send the request
 	let client = reqwest::Client::new();

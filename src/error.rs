@@ -35,8 +35,8 @@ pub enum SpawnError {
 	Sqlx(sqlx::Error),
 	/// The response sender was dropped before the response could be received.
 	Receive(RecvError),
-	/// JSON serialization of a request failed.
-	Json(serde_json::Error),
+	/// A request failed to (de)serialize
+	Serde(bincode::Error),
 }
 
 impl std::error::Error for SpawnError {
@@ -44,7 +44,7 @@ impl std::error::Error for SpawnError {
 		match *self {
 			SpawnError::Sqlx(ref e) => Some(e),
 			SpawnError::Receive(ref e) => Some(e),
-			SpawnError::Json(ref e) => Some(e),
+			SpawnError::Serde(ref e) => Some(e),
 		}
 	}
 }
@@ -54,7 +54,7 @@ impl std::fmt::Display for SpawnError {
 		match self {
 			SpawnError::Receive(e) => write!(f, "Receiver error: {}", e),
 			SpawnError::Sqlx(e) => write!(f, "SQL error: {}", e),
-			SpawnError::Json(e) => write!(f, "JSON error: {}", e),
+			SpawnError::Serde(e) => write!(f, "Serialization error: {}", e),
 		}
 	}
 }
@@ -71,8 +71,8 @@ impl From<RecvError> for SpawnError {
 	}
 }
 
-impl From<serde_json::Error> for SpawnError {
-	fn from(e: serde_json::Error) -> Self {
-		SpawnError::Json(e)
+impl From<bincode::Error> for SpawnError {
+	fn from(e: bincode::Error) -> Self {
+		SpawnError::Serde(e)
 	}
 }
