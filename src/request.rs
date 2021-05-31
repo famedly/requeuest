@@ -2,6 +2,8 @@
 
 use crate::{error::SpawnError, job};
 
+use std::collections::HashSet;
+
 use reqwest::{header::HeaderMap, Method};
 use serde::{Deserialize, Serialize};
 use sqlx::Postgres;
@@ -21,6 +23,13 @@ pub struct Request {
 	/// The HTTP headers to set for the request.
 	#[serde(with = "http_serde::header_map")]
 	pub headers: HeaderMap,
+	/// A set of HTTP response codes which won't cause a retry.
+	#[serde(default = "default_accepted_responses")]
+	pub accept_responses: HashSet<u16>,
+}
+
+fn default_accepted_responses() -> HashSet<u16> {
+	std::array::IntoIter::new([200]).collect()
 }
 
 impl Request {
@@ -86,6 +95,7 @@ impl Request {
 			body: None,
 			method: Method::GET,
 			headers,
+			accept_responses: default_accepted_responses(),
 		}
 	}
 
@@ -96,6 +106,7 @@ impl Request {
 			body: Some(body),
 			method: Method::POST,
 			headers,
+			accept_responses: default_accepted_responses(),
 		}
 	}
 
@@ -106,6 +117,7 @@ impl Request {
 			body: None,
 			method: Method::HEAD,
 			headers,
+			accept_responses: default_accepted_responses(),
 		}
 	}
 
@@ -116,6 +128,7 @@ impl Request {
 			body,
 			method: Method::DELETE,
 			headers,
+			accept_responses: default_accepted_responses(),
 		}
 	}
 
@@ -126,6 +139,7 @@ impl Request {
 			body: Some(body),
 			method: Method::PUT,
 			headers,
+			accept_responses: default_accepted_responses(),
 		}
 	}
 
@@ -139,6 +153,7 @@ impl Request {
 				.map(|b| b.to_vec()),
 			method: foreign.method().to_owned(),
 			headers: foreign.headers().to_owned(),
+			accept_responses: default_accepted_responses(),
 		}
 	}
 }

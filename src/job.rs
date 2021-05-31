@@ -4,7 +4,6 @@ use crate::{error::JobError, request::Request};
 
 use std::{collections::HashMap, sync::Mutex};
 
-use reqwest::StatusCode;
 use sqlxmq::{job, CurrentJob};
 use tokio::sync::{oneshot, OnceCell};
 use uuid::Uuid;
@@ -40,7 +39,10 @@ pub async fn http(mut job: CurrentJob) -> JobResult {
 	let response = builder.send().await?;
 
 	// complete the job if request was successful
-	if response.status() == StatusCode::OK {
+	if request
+		.accept_responses
+		.contains(&response.status().as_u16())
+	{
 		job.complete().await?;
 	}
 
@@ -63,7 +65,10 @@ pub async fn http_response(mut job: CurrentJob) -> JobResult {
 	let response = builder.send().await?;
 
 	// complete the job if request was successful
-	if response.status() == StatusCode::OK {
+	if request
+		.accept_responses
+		.contains(&response.status().as_u16())
+	{
 		job.complete().await?;
 
 		let sender_map = response_senders().await;
