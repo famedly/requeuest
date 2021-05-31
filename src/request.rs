@@ -154,8 +154,8 @@ mod tests {
 		let url = Url::parse("https://example.com/").unwrap();
 		let body = b"Some cool data".to_vec();
 		let request = Request::post(url, body, Default::default());
-		let serialized = serde_json::to_vec(&request).unwrap();
-		let deserialized: Request = serde_json::from_slice(&serialized).unwrap();
+		let serialized = bincode::serialize(&request).unwrap();
+		let deserialized: Request = bincode::deserialize(&serialized).unwrap();
 
 		assert_eq!(request.url, deserialized.url);
 		assert_eq!(request.method, deserialized.method);
