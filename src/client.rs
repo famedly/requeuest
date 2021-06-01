@@ -85,7 +85,7 @@ impl Client {
 	/// Spawns a request and await until a response with a 200 status code has been received,
 	/// returning the received response. This method will wait indefinitely until a succressful
 	/// response has been received, so be careful that your request is correctly constructed, and
-	/// that you don't inadverdently hang your program when calling this ethod.
+	/// that you don't inadvertently hang your program when calling this ethod.
 	pub async fn spawn_returning<'a>(
 		&'a self,
 		channel: &'static str,
