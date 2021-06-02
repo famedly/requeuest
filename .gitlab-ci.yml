@@ -1,5 +1,5 @@
 include:
-  - project: 'famedly/templates/ci-cd'
+  - project: 'famedly/company/devops/templates/ci-cd'
     ref: main
     file: '/rust.yml'
 
