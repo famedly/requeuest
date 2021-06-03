@@ -43,8 +43,8 @@ pub async fn http(mut job: CurrentJob) -> JobResult {
 	}
 	let response = builder.send().await?;
 
-	// complete the job if request was successful
-	if request.accept_responses.contains(&response.status().as_u16()) {
+	// complete the job if the response is in the accepted set
+	if request.accept_responses.iter().any(|accepted| accepted.accepts(response.status())) {
 		job.complete().await?;
 	}
 
@@ -66,8 +66,8 @@ pub async fn http_response(mut job: CurrentJob) -> JobResult {
 	}
 	let response = builder.send().await?;
 
-	// complete the job if request was successful
-	if request.accept_responses.contains(&response.status().as_u16()) {
+	// complete the job if the response is in the accepted set
+	if request.accept_responses.iter().any(|accepted| accepted.accepts(response.status())) {
 		job.complete().await?;
 
 		let sender_map = response_senders().await;
