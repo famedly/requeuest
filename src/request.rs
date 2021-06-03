@@ -1,6 +1,5 @@
-//! Contains the definition of the request which gets (de)serialized and sent to the database
-
-use crate::{error::SpawnError, job};
+//! Contains the definition of the request which gets (de)serialized and sent to
+//! the database
 
 use std::collections::HashSet;
 
@@ -9,6 +8,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::Postgres;
 use url::Url;
 use uuid::Uuid;
+
+use crate::{error::SpawnError, job};
 
 /// An HTTP request to be sent through the job queue.
 #[derive(Serialize, Deserialize, Debug)]
@@ -33,9 +34,9 @@ fn default_accepted_responses() -> HashSet<u16> {
 }
 
 impl Request {
-	/// Adds the given request to the queue on the specified channel using the given executor.
-	/// Returns the uuid of the spawned job. In most cases you probably want to use
-	/// [`Client::spawn`](crate::Client::spawn) instead.
+	/// Adds the given request to the queue on the specified channel using the
+	/// given executor. Returns the uuid of the spawned job. In most cases you
+	/// probably want to use [`Client::spawn`](crate::Client::spawn) instead.
 	pub async fn spawn_with<'a, E: sqlx::Executor<'a, Database = Postgres>>(
 		&'a self,
 		pool: E,
@@ -51,9 +52,10 @@ impl Request {
 		Ok(uuid)
 	}
 
-	/// Adds the request to the queue using the given executor, and awaits until the request has
-	/// been successfully completed, returning the received response. In most cases you probably
-	/// want to use [`Client::spawn`](crate::Client::spawn) instead.
+	/// Adds the request to the queue using the given executor, and awaits until
+	/// the request has been successfully completed, returning the received
+	/// response. In most cases you probably want to use
+	/// [`Client::spawn`](crate::Client::spawn) instead.
 	pub async fn spawn_returning_with<'a, E: sqlx::Executor<'a, Database = Postgres>>(
 		&'a self,
 		pool: E,
@@ -62,11 +64,7 @@ impl Request {
 		// Put a sender in the sender map so the job can use it
 		let uuid = Uuid::new_v4();
 		let (sender, receiver) = tokio::sync::oneshot::channel();
-		job::response_senders()
-			.await
-			.lock()
-			.unwrap()
-			.insert(uuid, sender);
+		job::response_senders().await.lock().unwrap().insert(uuid, sender);
 
 		// Spawn the job
 		job::http_response
@@ -99,7 +97,8 @@ impl Request {
 		}
 	}
 
-	/// Contructs a `POST` request to be sent to the given url with the given body and headers.
+	/// Contructs a `POST` request to be sent to the given url with the given
+	/// body and headers.
 	pub fn post(url: Url, body: Vec<u8>, headers: HeaderMap) -> Self {
 		Self {
 			url,
@@ -147,10 +146,7 @@ impl Request {
 	pub fn from_reqwest(foreign: reqwest::Request) -> Self {
 		Self {
 			url: foreign.url().to_owned(),
-			body: foreign
-				.body()
-				.and_then(|b| b.as_bytes())
-				.map(|b| b.to_vec()),
+			body: foreign.body().and_then(|b| b.as_bytes()).map(|b| b.to_vec()),
 			method: foreign.method().to_owned(),
 			headers: foreign.headers().to_owned(),
 			accept_responses: default_accepted_responses(),
@@ -160,9 +156,9 @@ impl Request {
 
 #[cfg(test)]
 mod tests {
-	use super::Request;
-
 	use url::Url;
+
+	use super::Request;
 
 	#[test]
 	fn serialization() {

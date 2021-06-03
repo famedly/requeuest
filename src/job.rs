@@ -1,12 +1,12 @@
 //! Contains the definition of the job which sends http requests.
 
-use crate::{error::JobError, request::Request};
-
 use std::{collections::HashMap, sync::Mutex};
 
 use sqlxmq::{job, CurrentJob};
 use tokio::sync::{oneshot, OnceCell};
 use uuid::Uuid;
+
+use crate::{error::JobError, request::Request};
 
 /// Alias for the result type sqlxmq jobs expect.
 pub type JobResult = Result<(), Box<dyn std::error::Error + Send + Sync + 'static>>;
@@ -25,9 +25,7 @@ pub(crate) async fn response_senders<'a>() -> &'a ResponseSender {
 }
 
 async fn http_client<'a>() -> &'a reqwest::Client {
-	REQWEST_CLIENT
-		.get_or_init(|| async { reqwest::Client::new() })
-		.await
+	REQWEST_CLIENT.get_or_init(|| async { reqwest::Client::new() }).await
 }
 
 /// The function which runs HTTP jobs and actually sends the requests.
@@ -46,10 +44,7 @@ pub async fn http(mut job: CurrentJob) -> JobResult {
 	let response = builder.send().await?;
 
 	// complete the job if request was successful
-	if request
-		.accept_responses
-		.contains(&response.status().as_u16())
-	{
+	if request.accept_responses.contains(&response.status().as_u16()) {
 		job.complete().await?;
 	}
 
@@ -72,18 +67,11 @@ pub async fn http_response(mut job: CurrentJob) -> JobResult {
 	let response = builder.send().await?;
 
 	// complete the job if request was successful
-	if request
-		.accept_responses
-		.contains(&response.status().as_u16())
-	{
+	if request.accept_responses.contains(&response.status().as_u16()) {
 		job.complete().await?;
 
 		let sender_map = response_senders().await;
-		let sender = sender_map
-			.lock()
-			.unwrap()
-			.remove(&job.id())
-			.ok_or(JobError::MissingSender)?;
+		let sender = sender_map.lock().unwrap().remove(&job.id()).ok_or(JobError::MissingSender)?;
 		sender.send(response).or(Err(JobError::MissingReceiver))?;
 	}
 
