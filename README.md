@@ -41,7 +41,7 @@ us by [info@famedly.com](mailto:info@famedly.com?subject=[GitLab]%20More%20Infor
 Requeuest (pronounced "recused") is a message queue which acts as an intermediary for HTTP requests, making sure that the sent request gets successfully delivered eventually, meaning that you do not have to implement retry logic for HTTP API requests. The queue uses the [`sqlxmq`] crate to make postgres its store for messages, which avoids the reliability risk of a dedicated message queue service potentially being down. This comes with the trade-off that job runners become part of the library consumer's process, and that a handle to the runner has to be kept alive so jobs can run in the background, since jobs cannot be delegated to a separate runner service.
 
 ## Getting started
-Assuming you already have an `sqlx` connection to a postgres database, you will first need to run migrations so the needed tables and SQL functions can get set up on your postgres database.
+Assuming you already have an `sqlx` connection to a postgres database, you will first need to run migrations so the needed tables and SQL functions can get set up on your postgres database. It's recommended to have a distinct database specifically for requeuest, to avoid interference with the migration management of a different service or library.
 ```rust
 requeuest::migrate(&pool).await?;
 ```
