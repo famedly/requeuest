@@ -102,6 +102,7 @@ impl Request {
 			.builder_with_id(uuid)
 			.set_raw_bytes(&bincode::serialize(self)?)
 			.set_channel_name(channel)
+			.set_retries(100_000)
 			.spawn(pool)
 			.await?;
 		Ok(receiver.await?)
