@@ -69,38 +69,19 @@ impl Client {
 		channel: &'static str,
 		request: &'a Request,
 	) -> Result<Uuid, SpawnError> {
-		let uuid = job::http
-			.builder()
-			.set_raw_bytes(&bincode::serialize(request)?)
-			.set_channel_name(channel)
-			.set_retries(100_000)
-			.spawn(&self.pool)
-			.await?;
-		Ok(uuid)
+		request.spawn_with(&self.pool, channel).await
 	}
 
-	/// Spawns a request and await until a response with a 200 status code has
-	/// been received, returning the received response. This method will wait
-	/// indefinitely until a succressful response has been received, so be
-	/// careful that your request is correctly constructed, and that you don't
-	/// inadvertently hang your program when calling this ethod.
+	/// Spawns a request and awaits until a response with an accepted status
+	/// code has been received, returning the received response. This method
+	/// will wait indefinitely until a succressful response has been received,
+	/// so be careful that your request is correctly constructed, and that you
+	/// don't inadvertently hang your program when calling this ethod.
 	pub async fn spawn_returning<'a>(
 		&'a self,
 		channel: &'static str,
 		request: &'a Request,
 	) -> Result<reqwest::Response, SpawnError> {
-		// Put a sender in the sender map so the job can use it
-		let uuid = Uuid::new_v4();
-		let (sender, receiver) = tokio::sync::oneshot::channel();
-		job::response_senders().await.lock().unwrap().insert(uuid, sender);
-
-		// Spawn the job
-		job::http_response
-			.builder_with_id(uuid)
-			.set_raw_bytes(&bincode::serialize(request)?)
-			.set_channel_name(channel)
-			.spawn(&self.pool)
-			.await?;
-		Ok(receiver.await?)
+		request.spawn_returning_with(&self.pool, channel).await
 	}
 }
