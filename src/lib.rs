@@ -64,7 +64,7 @@ pub mod request;
 
 pub use client::Client;
 pub use request::Request;
-pub use reqwest::{header::HeaderMap, Method};
+pub use reqwest::{self, header::HeaderMap, Method};
 use sqlx::{Pool, Postgres};
 pub use url::Url;
 pub use uuid::Uuid;
