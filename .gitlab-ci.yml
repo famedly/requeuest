@@ -11,6 +11,10 @@ stages:
 # `cargo clippy` and `cargo test --all --verbose`
 cargo-check:
   extends: .cargo_check
+  before_script:
+    - cargo install cargo-tarpaulin -f
+  script:
+    - cargo tarpaulin -v
 
 pages:
   extends: .cargo_common
