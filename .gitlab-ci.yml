@@ -2,6 +2,7 @@ include:
   - project: 'famedly/company/devops/templates/ci-cd'
     ref: main
     file: '/rust.yml'
+  - template: Security/License-Scanning.gitlab-ci.yml
 
 stages:
   - test
