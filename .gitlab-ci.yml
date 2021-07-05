@@ -1,22 +1,19 @@
 include:
   - project: 'famedly/company/devops/templates/ci-cd'
-    ref: main
+    ref: 'v0.1.3'
     file: '/rust.yml'
   - template: Security/License-Scanning.gitlab-ci.yml
 
 stages:
   - test
   - doc
+  - build
 
-# Runs `cargo fmt -- --check`, `cargo check`,
-# `cargo clippy` and `cargo test --all --verbose`
 cargo-check:
   extends: .cargo_check
-  before_script:
-# Workaround, see: https://github.com/xd009642/tarpaulin/issues/756#issuecomment-838769320
-    - cargo install cargo-tarpaulin --version 0.18.0-alpha3 -f
-  script:
-    - cargo tarpaulin --avoid-cfg-tarpaulin -v
+
+cargo-build:
+  extends: .cargo_build
 
 pages:
   extends: .cargo_common
