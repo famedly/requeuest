@@ -29,6 +29,19 @@ impl Client {
 		Ok(Self { pool, listener: Some(listener) })
 	}
 
+	/// Replace the job listener with one that listens to a different set of
+	/// channels. Since the client's listener gets dropped, execution of any
+	/// running jobs will be aborted until the new listener is constructed and
+	/// can resume the aborted jobs. If the listener has been taken it
+	/// won't be dropped, and you'll have to do so yourself unless you want
+	/// duplicate listeners.
+	pub async fn restart(&mut self, channels: &[&str]) -> Result<(), sqlx::Error> {
+		drop(self.listener.take());
+		let registry = JobRegistry::new(&[job::http, job::http_response]);
+		self.listener = Some(registry.runner(&self.pool).set_channel_names(channels).run().await?);
+		Ok(())
+	}
+
 	/// Takes the tokio `JoinHandle` which listens for and runs spawned jobs,
 	/// and prevents it from being aborted when the client is dropped. Returns
 	/// `None` if the handle has already been taken.
