@@ -6,12 +6,14 @@
 //! Assuming you already have an `sqlx` connection to a postgres database, you
 //! will first need to run migrations so the needed tables and SQL functions can
 //! get set up on your postgres database.
+//!
 //! ```no_run
 //! # async fn test(pool: &sqlx::Pool<sqlx::Postgres>) -> Result<(), sqlx::migrate::MigrateError> {
 //! requeuest::migrate(&pool).await?;
 //! # Ok(())
 //! # }
 //! ```
+//!
 //! Once that's taken care of, start by constructing a client. This is what you
 //! will use to spawn requests, an what will execute jobs in the background. It
 //! will keep doing so until it is dropped. The client contains a tokio
@@ -19,6 +21,7 @@
 //! [`Client::take_listener`](crate::Client::take_listener) if you want the
 //! listener to keep running after the client has dropped, or otherwise
 //! interface with the background task directly.
+//!
 //! ```no_run
 //! # async fn test(pool: sqlx::Pool<sqlx::Postgres>) -> Result<(), sqlx::Error> {
 //! use requeuest::Client;
@@ -27,8 +30,10 @@
 //! # Ok(())
 //! # }
 //! ```
+//!
 //! After the client has been constructed, you can begin spawning jobs. Here we
 //! send a get request to an example address:
+//!
 //! ```no_run
 //! use requeuest::{HeaderMap, Request};
 //!
@@ -38,8 +43,10 @@
 //! # Ok(())
 //! # }
 //! ```
+//!
 //! You can also also get the response back from a successfully delivered
 //! request.
+//!
 //! ```no_run
 //! # use requeuest::Request;
 //!
@@ -50,6 +57,7 @@
 //! # Ok(())
 //! # }
 //! ```
+//!
 //! Note that the `spawn_returning` method *will* wait indefinitely (or to be
 //! precise, roughly 10^293 years) until a successful response is received, so
 //! this will wait forever if a request is sent to e.g. an unregistered domain,
