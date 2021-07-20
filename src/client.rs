@@ -22,7 +22,9 @@ impl Client {
 	/// It will stop running jobs when it goes out of scope, unless
 	/// `take_listener` listener is called.
 	pub async fn new(pool: PgPool, channels: &[&str]) -> Result<Self, sqlx::Error> {
-		let registry = JobRegistry::new(&[job::http, job::http_response]);
+		let mut registry = JobRegistry::new(&[job::http, job::http_response]);
+		registry.set_context(reqwest::Client::new());
+
 		let listener = registry.runner(&pool).set_channel_names(channels).run().await?;
 		Ok(Self { pool, listener: Some(listener) })
 	}
@@ -31,11 +33,8 @@ impl Client {
 	/// and prevents it from being aborted when the client is dropped. Returns
 	/// `None` if the handle has already been taken.
 	pub fn take_listener(&mut self) -> Option<tokio::task::JoinHandle<()>> {
-		if let Some(mut handle) = self.listener.take() {
-			// We can't move the inner handle directly, since the newtype containing it
-			// implements Drop, so we replace it instead.
-			let inner = std::mem::replace(&mut handle.0, tokio::task::spawn(async {}));
-			return Some(inner);
+		if let Some(handle) = self.listener.take() {
+			return Some(handle.into_inner());
 		}
 		None
 	}
