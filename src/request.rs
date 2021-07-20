@@ -6,6 +6,7 @@ use std::collections::HashSet;
 use reqwest::{header::HeaderMap, Method, StatusCode};
 use serde::{Deserialize, Serialize};
 use sqlx::Postgres;
+use sqlxmq::JobBuilder;
 use url::Url;
 use uuid::Uuid;
 
@@ -64,6 +65,10 @@ fn default_accepted_responses() -> HashSet<AcceptedResponse> {
 	std::array::IntoIter::new([AcceptedResponse::Success]).collect()
 }
 
+fn default_job_proto<'a>(builder: &'a mut JobBuilder<'a>) -> &'a mut JobBuilder<'a> {
+	builder.set_retries(100_000).set_ordered(true)
+}
+
 impl Request {
 	/// Adds the given request to the queue on the specified channel using the
 	/// given executor. Returns the uuid of the spawned job. In most cases you
@@ -77,9 +82,32 @@ impl Request {
 			.builder()
 			.set_raw_bytes(&bincode::serialize(self)?)
 			.set_channel_name(channel)
-			.set_retries(100_000)
+			.set_proto(default_job_proto)
 			.spawn(pool)
 			.await?;
+		Ok(uuid)
+	}
+
+	/// Spawn a returning job. Accepts a closure which lets you set custom job
+	/// parameters, such as if a job should be ordered and how many retry
+	/// attempts should be made. See [`sqlxmq::JobBuilder`](sqlxmq::JobBuilder)
+	/// for available configurations.
+	pub async fn spawn_with_cfg<'a, E: sqlx::Executor<'a, Database = Postgres>>(
+		&'a self,
+		pool: E,
+		channel: &'static str,
+		cfg: impl for<'b> FnOnce(&'b mut JobBuilder),
+	) -> Result<Uuid, SpawnError> {
+		let mut builder = job::http.builder();
+
+		let builder = builder.set_proto(default_job_proto);
+		cfg(builder);
+		let uuid = builder
+			.set_channel_name(channel)
+			.set_raw_bytes(&bincode::serialize(self)?)
+			.spawn(pool)
+			.await?;
+
 		Ok(uuid)
 	}
 
@@ -102,7 +130,34 @@ impl Request {
 			.builder_with_id(uuid)
 			.set_raw_bytes(&bincode::serialize(self)?)
 			.set_channel_name(channel)
-			.set_retries(100_000)
+			.set_proto(default_job_proto)
+			.spawn(pool)
+			.await?;
+		Ok(receiver.await?)
+	}
+
+	/// Spawn a returning job. Accepts a closure which lets you set custom job
+	/// parameters, such as if a job should be ordered and how many retry
+	/// attempts should be made. See [`sqlxmq::JobBuilder`](sqlxmq::JobBuilder)
+	/// for available configurations.
+	pub async fn spawn_returning_with_cfg<'a, E: sqlx::Executor<'a, Database = Postgres>>(
+		&'a self,
+		pool: E,
+		channel: &'static str,
+		cfg: impl for<'b> FnOnce(&'b mut JobBuilder),
+	) -> Result<reqwest::Response, SpawnError> {
+		// Put a sender in the sender map so the job can use it
+		let uuid = Uuid::new_v4();
+		let (sender, receiver) = tokio::sync::oneshot::channel();
+		job::response_senders().await.lock().unwrap().insert(uuid, sender);
+
+		// Spawn the job
+		let mut builder = job::http_response.builder_with_id(uuid);
+		let builder = builder.set_proto(default_job_proto);
+		cfg(builder);
+		builder
+			.set_raw_bytes(&bincode::serialize(self)?)
+			.set_channel_name(channel)
 			.spawn(pool)
 			.await?;
 		Ok(receiver.await?)

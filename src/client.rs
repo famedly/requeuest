@@ -2,7 +2,7 @@
 //! to spawn jobs.
 
 use sqlx::PgPool;
-use sqlxmq::JobRegistry;
+use sqlxmq::{JobBuilder, JobRegistry};
 use uuid::Uuid;
 
 use crate::{error::SpawnError, job, request::Request};
@@ -71,6 +71,28 @@ impl Client {
 		request.spawn_with(&self.pool, channel).await
 	}
 
+	/// Spawn a job. Accepts a closure which lets you set custom job
+	/// parameters, such as if a job should be ordered and how many retry
+	/// attempts should be made. See [`sqlxmq::JobBuilder`](sqlxmq::JobBuilder)
+	/// for available configurations.
+	///
+	/// # Example
+	/// ```no_run
+	/// # use requeuest::{Client, Request, error::SpawnError};
+	/// # async fn example(client: Client, request: Request) -> Result<(), SpawnError> {
+	/// client.spawn_cfg("my_app", &request, |job| { job.set_ordered(false); }).await?;
+	/// # Ok(())
+	/// # }
+	/// ```
+	pub async fn spawn_cfg<'a>(
+		&'a self,
+		channel: &'static str,
+		request: &'a Request,
+		cfg: impl for<'b> FnOnce(&'b mut JobBuilder),
+	) -> Result<Uuid, SpawnError> {
+		request.spawn_with_cfg(&self.pool, channel, cfg).await
+	}
+
 	/// Spawns a request and awaits until a response with an accepted status
 	/// code has been received, returning the received response. This method
 	/// will wait indefinitely until a succressful response has been received,
@@ -82,5 +104,17 @@ impl Client {
 		request: &'a Request,
 	) -> Result<reqwest::Response, SpawnError> {
 		request.spawn_returning_with(&self.pool, channel).await
+	}
+
+	/// Spawn a returning job. Accetps a closure which lets you set custom job
+	/// parameters. See [`sqlxmq::JobBuilder`](sqlxmq::JobBuilder) for available
+	/// configurations.
+	pub async fn spawn_returning_cfg<'a>(
+		&'a self,
+		channel: &'static str,
+		request: &'a Request,
+		cfg: impl for<'b> FnOnce(&'b mut JobBuilder),
+	) -> Result<reqwest::Response, SpawnError> {
+		request.spawn_returning_with_cfg(&self.pool, channel, cfg).await
 	}
 }
