@@ -99,13 +99,15 @@ impl Request {
 		cfg: impl for<'b> FnOnce(&'b mut JobBuilder),
 	) -> Result<Uuid, SpawnError> {
 		let mut builder = job::http.builder();
-		cfg(&mut builder);
+
+		let builder = builder.set_proto(default_job_proto);
+		cfg(builder);
 		let uuid = builder
-			.set_raw_bytes(&bincode::serialize(self)?)
 			.set_channel_name(channel)
-			.set_proto(default_job_proto)
+			.set_raw_bytes(&bincode::serialize(self)?)
 			.spawn(pool)
 			.await?;
+
 		Ok(uuid)
 	}
 
@@ -151,11 +153,11 @@ impl Request {
 
 		// Spawn the job
 		let mut builder = job::http_response.builder_with_id(uuid);
-		cfg(&mut builder);
+		let builder = builder.set_proto(default_job_proto);
+		cfg(builder);
 		builder
 			.set_raw_bytes(&bincode::serialize(self)?)
 			.set_channel_name(channel)
-			.set_proto(default_job_proto)
 			.spawn(pool)
 			.await?;
 		Ok(receiver.await?)
