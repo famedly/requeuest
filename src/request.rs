@@ -73,6 +73,22 @@ impl Request {
 	/// Adds the given request to the queue on the specified channel using the
 	/// given executor. Returns the uuid of the spawned job. In most cases you
 	/// probably want to use [`Client::spawn`](crate::Client::spawn) instead.
+	///
+	/// # Example
+	/// ```no_run
+	/// # use std::error::Error;
+	/// # use url::Url;
+	/// # use requeuest::{Client, Request};
+	/// # async fn run(client: Client, url1: Url, url2: Url) -> Result<(), Box<dyn Error>> {
+	/// let req1 = Request::get(url1, Default::default());
+	/// let req2 = Request::get(url2, Default::default());
+	/// let mut transaction = client.pool().begin().await?;
+	/// req1.spawn_with(&mut transaction, "my_service").await?;
+	/// req2.spawn_with(&mut transaction, "my_service").await?;
+	/// transaction.commit().await?;
+	/// # Ok(())
+	/// # }
+	/// ```
 	pub async fn spawn_with<'a, E: sqlx::Executor<'a, Database = Postgres>>(
 		&'a self,
 		pool: E,
@@ -90,8 +106,8 @@ impl Request {
 
 	/// Spawn a returning job. Accepts a closure which lets you set custom job
 	/// parameters, such as if a job should be ordered and how many retry
-	/// attempts should be made. See [`sqlxmq::JobBuilder`](sqlxmq::JobBuilder)
-	/// for available configurations.
+	/// attempts should be made. See [`sqlxmq::JobBuilder`] for available
+	/// configurations.
 	pub async fn spawn_with_cfg<'a, E: sqlx::Executor<'a, Database = Postgres>>(
 		&'a self,
 		pool: E,
@@ -138,8 +154,8 @@ impl Request {
 
 	/// Spawn a returning job. Accepts a closure which lets you set custom job
 	/// parameters, such as if a job should be ordered and how many retry
-	/// attempts should be made. See [`sqlxmq::JobBuilder`](sqlxmq::JobBuilder)
-	/// for available configurations.
+	/// attempts should be made. See [`sqlxmq::JobBuilder`] for available
+	/// configurations.
 	pub async fn spawn_returning_with_cfg<'a, E: sqlx::Executor<'a, Database = Postgres>>(
 		&'a self,
 		pool: E,
