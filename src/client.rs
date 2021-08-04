@@ -1,6 +1,8 @@
 //! The `Client` holds the job listener and database connection, which is used
 //! to spawn jobs.
 
+use std::borrow::Cow;
+
 use sqlx::PgPool;
 use sqlxmq::{JobBuilder, JobRegistry};
 use uuid::Uuid;
@@ -76,9 +78,9 @@ impl Client {
 	/// client.spawn("my_service", &request).await?;
 	/// # Ok(())
 	/// # }
-	pub async fn spawn<'a>(
+	pub async fn spawn<'a, C: Into<Cow<'static, str>>>(
 		&'a self,
-		channel: &'static str,
+		channel: C,
 		request: &'a Request,
 	) -> Result<Uuid, SpawnError> {
 		request.spawn_with(&self.pool, channel).await
@@ -97,9 +99,9 @@ impl Client {
 	/// # Ok(())
 	/// # }
 	/// ```
-	pub async fn spawn_cfg<'a>(
+	pub async fn spawn_cfg<'a, C: Into<Cow<'static, str>>>(
 		&'a self,
-		channel: &'static str,
+		channel: C,
 		request: &'a Request,
 		cfg: impl for<'b> FnOnce(&'b mut JobBuilder),
 	) -> Result<Uuid, SpawnError> {
@@ -111,9 +113,9 @@ impl Client {
 	/// will wait indefinitely until a succressful response has been received,
 	/// so be careful that your request is correctly constructed, and that you
 	/// don't inadvertently hang your program when calling this ethod.
-	pub async fn spawn_returning<'a>(
+	pub async fn spawn_returning<'a, C: Into<Cow<'static, str>>>(
 		&'a self,
-		channel: &'static str,
+		channel: C,
 		request: &'a Request,
 	) -> Result<reqwest::Response, SpawnError> {
 		request.spawn_returning_with(&self.pool, channel).await
@@ -122,9 +124,9 @@ impl Client {
 	/// Spawn a returning job. Accetps a closure which lets you set custom job
 	/// parameters. See [`sqlxmq::JobBuilder`](sqlxmq::JobBuilder) for available
 	/// configurations.
-	pub async fn spawn_returning_cfg<'a>(
+	pub async fn spawn_returning_cfg<'a, C: Into<Cow<'static, str>>>(
 		&'a self,
-		channel: &'static str,
+		channel: C,
 		request: &'a Request,
 		cfg: impl for<'b> FnOnce(&'b mut JobBuilder),
 	) -> Result<reqwest::Response, SpawnError> {
