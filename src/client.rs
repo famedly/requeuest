@@ -7,6 +7,14 @@ use uuid::Uuid;
 
 use crate::{error::SpawnError, job, request::Request};
 
+/// The list of channels the client should listen on
+pub enum Channels<'a> {
+	/// Listen on all channels requeuests are created for
+	All,
+	/// List of specific channels requeuest should listen on
+	List(&'a [&'a str]),
+}
+
 /// The client is used for listening for and spawning new jobs.
 #[derive(Debug)]
 pub struct Client {
@@ -19,14 +27,19 @@ pub struct Client {
 
 impl Client {
 	/// Constructs a new client, which listens for jobs on the given channels.
+	///
 	/// It will stop running jobs when it goes out of scope, unless
 	/// `take_listener` listener is called.
-	pub async fn new(pool: PgPool, channels: &[&str]) -> Result<Self, sqlx::Error> {
+	pub async fn new(pool: PgPool, channels: Channels<'_>) -> Result<Self, sqlx::Error> {
 		let mut registry = JobRegistry::new(&[job::http, job::http_response]);
 		registry.set_context(reqwest::Client::new());
 
-		let listener = registry.runner(&pool).set_channel_names(channels).run().await?;
-		Ok(Self { pool, listener: Some(listener) })
+		let mut listener = registry.runner(&pool);
+		if let Channels::List(channels) = channels {
+			listener.set_channel_names(channels);
+		}
+
+		Ok(Self { pool, listener: Some(listener.run().await?) })
 	}
 
 	/// Takes the tokio `JoinHandle` which listens for and runs spawned jobs,
@@ -56,9 +69,9 @@ impl Client {
 	/// # Example
 	/// ```no_run
 	/// # async fn test(pool: sqlx::postgres::PgPool) -> Result<(), Box<dyn std::error::Error>> {
-	/// use requeuest::{Client, Request};
+	/// use requeuest::{Client, Request, client::Channels};
 	///
-	/// let client = Client::new(pool, &["my_service"]).await?;
+	/// let client = Client::new(pool, Channels::List(&["my_service"])).await?;
 	/// let request = Request::get("https://foo.bar/baz".parse()?, Default::default());
 	/// client.spawn("my_service", &request).await?;
 	/// # Ok(())
