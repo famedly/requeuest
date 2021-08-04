@@ -24,9 +24,9 @@
 //!
 //! ```no_run
 //! # async fn test(pool: sqlx::Pool<sqlx::Postgres>) -> Result<(), sqlx::Error> {
-//! use requeuest::Client;
+//! use requeuest::{Client, client::Channels};
 //!
-//! let client = Client::new(pool, &["my_service"]).await?;
+//! let client = Client::new(pool, Channels::List(&["my_service"])).await?;
 //! # Ok(())
 //! # }
 //! ```
