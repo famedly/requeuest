@@ -1,7 +1,7 @@
 //! Contains the definition of the request which gets (de)serialized and sent to
 //! the database
 
-use std::collections::HashSet;
+use std::{borrow::Cow, collections::HashSet};
 
 use reqwest::{header::HeaderMap, Method, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -89,15 +89,19 @@ impl Request {
 	/// # Ok(())
 	/// # }
 	/// ```
-	pub async fn spawn_with<'a, E: sqlx::Executor<'a, Database = Postgres>>(
+	pub async fn spawn_with<
+		'a,
+		E: sqlx::Executor<'a, Database = Postgres>,
+		C: Into<Cow<'static, str>>,
+	>(
 		&'a self,
 		pool: E,
-		channel: &'static str,
+		channel: C,
 	) -> Result<Uuid, SpawnError> {
 		let uuid = job::http
 			.builder()
 			.set_raw_bytes(&bincode::serialize(self)?)
-			.set_channel_name(channel)
+			.set_channel_name(channel.into().as_ref())
 			.set_proto(default_job_proto)
 			.spawn(pool)
 			.await?;
@@ -108,10 +112,14 @@ impl Request {
 	/// parameters, such as if a job should be ordered and how many retry
 	/// attempts should be made. See [`sqlxmq::JobBuilder`] for available
 	/// configurations.
-	pub async fn spawn_with_cfg<'a, E: sqlx::Executor<'a, Database = Postgres>>(
+	pub async fn spawn_with_cfg<
+		'a,
+		E: sqlx::Executor<'a, Database = Postgres>,
+		C: Into<Cow<'static, str>>,
+	>(
 		&'a self,
 		pool: E,
-		channel: &'static str,
+		channel: C,
 		cfg: impl for<'b> FnOnce(&'b mut JobBuilder),
 	) -> Result<Uuid, SpawnError> {
 		let mut builder = job::http.builder();
@@ -119,7 +127,7 @@ impl Request {
 		let builder = builder.set_proto(default_job_proto);
 		cfg(builder);
 		let uuid = builder
-			.set_channel_name(channel)
+			.set_channel_name(channel.into().as_ref())
 			.set_raw_bytes(&bincode::serialize(self)?)
 			.spawn(pool)
 			.await?;
@@ -131,10 +139,14 @@ impl Request {
 	/// the request has been successfully completed, returning the received
 	/// response. In most cases you probably want to use
 	/// [`Client::spawn`](crate::Client::spawn) instead.
-	pub async fn spawn_returning_with<'a, E: sqlx::Executor<'a, Database = Postgres>>(
+	pub async fn spawn_returning_with<
+		'a,
+		E: sqlx::Executor<'a, Database = Postgres>,
+		C: Into<Cow<'static, str>>,
+	>(
 		&'a self,
 		pool: E,
-		channel: &'static str,
+		channel: C,
 	) -> Result<reqwest::Response, SpawnError> {
 		// Put a sender in the sender map so the job can use it
 		let uuid = Uuid::new_v4();
@@ -145,7 +157,7 @@ impl Request {
 		job::http_response
 			.builder_with_id(uuid)
 			.set_raw_bytes(&bincode::serialize(self)?)
-			.set_channel_name(channel)
+			.set_channel_name(channel.into().as_ref())
 			.set_proto(default_job_proto)
 			.spawn(pool)
 			.await?;
@@ -156,10 +168,14 @@ impl Request {
 	/// parameters, such as if a job should be ordered and how many retry
 	/// attempts should be made. See [`sqlxmq::JobBuilder`] for available
 	/// configurations.
-	pub async fn spawn_returning_with_cfg<'a, E: sqlx::Executor<'a, Database = Postgres>>(
+	pub async fn spawn_returning_with_cfg<
+		'a,
+		E: sqlx::Executor<'a, Database = Postgres>,
+		C: Into<Cow<'static, str>>,
+	>(
 		&'a self,
 		pool: E,
-		channel: &'static str,
+		channel: C,
 		cfg: impl for<'b> FnOnce(&'b mut JobBuilder),
 	) -> Result<reqwest::Response, SpawnError> {
 		// Put a sender in the sender map so the job can use it
@@ -173,7 +189,7 @@ impl Request {
 		cfg(builder);
 		builder
 			.set_raw_bytes(&bincode::serialize(self)?)
-			.set_channel_name(channel)
+			.set_channel_name(channel.into().as_ref())
 			.spawn(pool)
 			.await?;
 		Ok(receiver.await?)
