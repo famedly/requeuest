@@ -16,3 +16,9 @@ cargo-build:
 
 pages:
   extends: .cargo_doc
+  variables: 
+    RUSTDOCFLAGS: "--enable-index-page -Zunstable-options"
+
+  script:
+    - cargo +nightly doc -Zrustdoc-map --no-deps
+    - mv target/doc public
