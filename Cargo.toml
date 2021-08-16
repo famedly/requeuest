@@ -4,7 +4,10 @@ version = "0.2.0"
 edition = "2018"
 authors = ["Amanda Graven <amanda@amandag.net>"]
 description = "Queue for HTTP requests using postgres as backing store"
+repository = "https://gitlab.com/famedly/company/backend/libraries/requeuest"
+documentation = "https://docs.rs/requeuest"
 readme = "README.md"
+license = "AGPL-3.0-only"
 
 [features]
 runtime-tokio-rustls = ["sqlx/runtime-tokio-rustls"]
