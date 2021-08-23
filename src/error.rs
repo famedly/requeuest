@@ -77,3 +77,48 @@ impl From<bincode::Error> for SpawnError {
 		SpawnError::Serde(e)
 	}
 }
+
+/// Errors which happen when converting requests from the [`http`] crate.
+#[cfg(feature = "http")]
+#[derive(Debug)]
+pub enum ConvertError {
+	/// A [`http::Request`] was incorrectly constructed
+	Http(http::Error),
+	/// The [`Uri`](http::Uri) of a request could not be converted to a
+	/// [`Url`](url::Url).
+	Url(url::ParseError),
+}
+
+#[cfg(feature = "http")]
+impl std::error::Error for ConvertError {
+	fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+		match *self {
+			ConvertError::Http(ref e) => Some(e),
+			ConvertError::Url(ref e) => Some(e),
+		}
+	}
+}
+
+#[cfg(feature = "http")]
+impl std::fmt::Display for ConvertError {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			ConvertError::Http(e) => write!(f, "Bad http request: {}", e),
+			ConvertError::Url(e) => write!(f, "URL parsing error: {}", e),
+		}
+	}
+}
+
+#[cfg(feature = "http")]
+impl From<http::Error> for ConvertError {
+	fn from(e: http::Error) -> Self {
+		ConvertError::Http(e)
+	}
+}
+
+#[cfg(feature = "http")]
+impl From<url::ParseError> for ConvertError {
+	fn from(e: url::ParseError) -> Self {
+		ConvertError::Url(e)
+	}
+}
