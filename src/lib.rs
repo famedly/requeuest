@@ -62,6 +62,12 @@
 //! precise, roughly 10^293 years) until a successful response is received, so
 //! this will wait forever if a request is sent to e.g. an unregistered domain,
 //! or sends data to an API which will always result in a non-200 response code.
+//!
+//! # Features
+//! This crate has the following features:
+//! * `http`: Enable conversion of requests from the [`http`] crate
+//! * Async runtime and TLS implementation for [`sqlx`]:
+//!     * Any of `runtime-{tokio,actix,async-std}-{rustls,native-tls}`
 
 #![deny(missing_docs)]
 
