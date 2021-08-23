@@ -1,9 +1,12 @@
 //! Contains the definition of the job which sends http requests.
 
-use std::{collections::HashMap, sync::Mutex};
+use std::{
+	collections::HashMap,
+	sync::{Arc, LockResult, Mutex, MutexGuard},
+};
 
 use sqlxmq::{job, CurrentJob};
-use tokio::sync::{oneshot, OnceCell};
+use tokio::sync::oneshot;
 use uuid::Uuid;
 
 use crate::{error::JobError, request::Request};
@@ -11,16 +14,28 @@ use crate::{error::JobError, request::Request};
 /// Alias for the result type sqlxmq jobs expect.
 pub type JobResult = Result<(), Box<dyn std::error::Error + Send + Sync + 'static>>;
 
-type ResponseSender = Mutex<HashMap<Uuid, oneshot::Sender<reqwest::Response>>>;
+type SenderMap = HashMap<Uuid, oneshot::Sender<reqwest::Response>>;
 
-static RESPONSE_SENDERS: OnceCell<ResponseSender> = OnceCell::const_new();
+/// Mechanism for returning responses from successful jobs.
+#[derive(Debug)]
+pub(crate) struct ResponseSender(Arc<Mutex<SenderMap>>);
 
-async fn senders_init() -> ResponseSender {
-	Mutex::new(HashMap::new())
+impl ResponseSender {
+	/// Contructs a new response sender.
+	pub fn new() -> ResponseSender {
+		ResponseSender(Arc::new(Mutex::new(HashMap::new())))
+	}
+
+	/// Gets a lock to the mutex wrapping the map.
+	pub fn lock(&self) -> LockResult<MutexGuard<SenderMap>> {
+		self.0.lock()
+	}
 }
 
-pub(crate) async fn response_senders<'a>() -> &'a ResponseSender {
-	RESPONSE_SENDERS.get_or_init(senders_init).await
+impl Clone for ResponseSender {
+	fn clone(&self) -> Self {
+		ResponseSender(Arc::clone(&self.0))
+	}
 }
 
 /// The function which runs HTTP jobs and actually sends the requests.
@@ -47,7 +62,11 @@ pub async fn http(mut job: CurrentJob, client: reqwest::Client) -> JobResult {
 
 /// Sends the response to the HTTP request back via a oneshot channel.
 #[job(name = "http_response")]
-pub async fn http_response(mut job: CurrentJob, client: reqwest::Client) -> JobResult {
+pub async fn http_response(
+	mut job: CurrentJob,
+	client: reqwest::Client,
+	sender: ResponseSender,
+) -> JobResult {
 	// validate the job payload
 	let payload = job.raw_bytes().ok_or(JobError::MissingRequest)?;
 	let request: Request = bincode::deserialize(payload)?;
@@ -63,8 +82,7 @@ pub async fn http_response(mut job: CurrentJob, client: reqwest::Client) -> JobR
 	if request.accept_responses.iter().any(|accepted| accepted.accepts(response.status())) {
 		job.complete().await?;
 
-		let sender_map = response_senders().await;
-		let sender = sender_map.lock().unwrap().remove(&job.id()).ok_or(JobError::MissingSender)?;
+		let sender = sender.0.lock().unwrap().remove(&job.id()).ok_or(JobError::MissingSender)?;
 		sender.send(response).or(Err(JobError::MissingReceiver))?;
 	}
 

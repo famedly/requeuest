@@ -3,11 +3,16 @@
 
 use std::borrow::Cow;
 
-use sqlx::PgPool;
+use sqlx::{PgPool, Postgres};
 use sqlxmq::{JobBuilder, JobRegistry};
+use tokio::sync::oneshot;
 use uuid::Uuid;
 
-use crate::{error::SpawnError, job, request::Request};
+use crate::{error::SpawnError, job, job::ResponseSender, request::Request};
+
+fn default_job_proto<'a>(builder: &'a mut JobBuilder<'a>) -> &'a mut JobBuilder<'a> {
+	builder.set_retries(100_000).set_ordered(true)
+}
 
 /// The list of channels the client should listen on
 pub enum Channels<'a> {
@@ -25,6 +30,8 @@ pub struct Client {
 	/// The handle to the tokio task which listens for and spawns jobs in the
 	/// background.
 	listener: Option<sqlxmq::OwnedHandle>,
+	/// A map of oneshot channels which successful responses are sent through.
+	response_sender: ResponseSender,
 }
 
 impl Client {
@@ -34,14 +41,16 @@ impl Client {
 	/// `take_listener` listener is called.
 	pub async fn new(pool: PgPool, channels: Channels<'_>) -> Result<Self, sqlx::Error> {
 		let mut registry = JobRegistry::new(&[job::http, job::http_response]);
+		let response_sender = ResponseSender::new();
 		registry.set_context(reqwest::Client::new());
+		registry.set_context(response_sender.clone());
 
 		let mut listener = registry.runner(&pool);
 		if let Channels::List(channels) = channels {
 			listener.set_channel_names(channels);
 		}
 
-		Ok(Self { pool, listener: Some(listener.run().await?) })
+		Ok(Self { pool, listener: Some(listener.run().await?), response_sender })
 	}
 
 	/// Takes the tokio `JoinHandle` which listens for and runs spawned jobs,
@@ -83,13 +92,18 @@ impl Client {
 		channel: C,
 		request: &'a Request,
 	) -> Result<Uuid, SpawnError> {
-		request.spawn_with(&self.pool, channel).await
+		self.spawn_with(&self.pool, channel, request).await
 	}
 
 	/// Spawn a job. Accepts a closure which lets you set custom job
 	/// parameters, such as if a job should be ordered and how many retry
-	/// attempts should be made. See [`sqlxmq::JobBuilder`](sqlxmq::JobBuilder)
-	/// for available configurations.
+	/// attempts should be made. By default jobs are ordered and retried 100 000
+	/// times. See [`sqlxmq::JobBuilder`](sqlxmq::JobBuilder)
+	/// for available configurations. They include:
+	/// * [Number of retries](sqlxmq::JobBuilder::set_retries)
+	/// * [Initial retry backoff](sqlxmq::JobBuilder::set_retry_backoff)
+	/// * [If the job is ordered](sqlxmq::JobBuilder::set_ordered)
+	/// * [Delay before execution](sqlxmq::JobBuilder::set_delay)
 	///
 	/// # Example
 	/// ```no_run
@@ -105,7 +119,76 @@ impl Client {
 		request: &'a Request,
 		cfg: impl for<'b> FnOnce(&'b mut JobBuilder),
 	) -> Result<Uuid, SpawnError> {
-		request.spawn_with_cfg(&self.pool, channel, cfg).await
+		self.spawn_with_cfg(&self.pool, channel, cfg, request).await
+	}
+
+	/// Adds the given request to the queue on the specified channel using the
+	/// given executor. Returns the uuid of the spawned job. This is useful if
+	/// you want to spawn several jobs in one transaction, but in most cases you
+	/// probably want to use [`Client::spawn`](crate::Client::spawn) instead.
+	///
+	/// # Example
+	/// ```no_run
+	/// # use std::error::Error;
+	/// # use url::Url;
+	/// # use requeuest::{Client, Request};
+	/// # async fn run(client: Client, url1: Url, url2: Url) -> Result<(), Box<dyn Error>> {
+	/// let req1 = Request::get(url1, Default::default());
+	/// let req2 = Request::get(url2, Default::default());
+	/// let mut transaction = client.pool().begin().await?;
+	/// client.spawn_with(&mut transaction, "my_service", &req1).await?;
+	/// client.spawn_with(&mut transaction, "my_service", &req2).await?;
+	/// transaction.commit().await?;
+	/// # Ok(())
+	/// # }
+	/// ```
+	pub async fn spawn_with<'a, E, C>(
+		&'a self,
+		pool: E,
+		channel: C,
+		request: &Request,
+	) -> Result<Uuid, SpawnError>
+	where
+		E: sqlx::Executor<'a, Database = Postgres>,
+		C: Into<Cow<'static, str>>,
+	{
+		let uuid = job::http
+			.builder()
+			.set_raw_bytes(&bincode::serialize(request)?)
+			.set_channel_name(channel.into().as_ref())
+			.set_proto(default_job_proto)
+			.spawn(pool)
+			.await?;
+		Ok(uuid)
+	}
+
+	/// Adds the given request to the queue on the specified channel using the
+	/// given executor. Returns the uuid of the spawned job. Accepts a closure
+	/// which lets you set custom job parameters, such as if a job should be
+	/// ordered and how many retry attempts should be made. See
+	/// [`sqlxmq::JobBuilder`] for available configurations.
+	pub async fn spawn_with_cfg<'a, E, C>(
+		&'a self,
+		pool: E,
+		channel: C,
+		cfg: impl for<'b> FnOnce(&'b mut JobBuilder),
+		request: &Request,
+	) -> Result<Uuid, SpawnError>
+	where
+		E: sqlx::Executor<'a, Database = Postgres>,
+		C: Into<Cow<'static, str>>,
+	{
+		let mut builder = job::http.builder();
+
+		let builder = builder.set_proto(default_job_proto);
+		cfg(builder);
+		let uuid = builder
+			.set_channel_name(channel.into().as_ref())
+			.set_raw_bytes(&bincode::serialize(request)?)
+			.spawn(pool)
+			.await?;
+
+		Ok(uuid)
 	}
 
 	/// Spawns a request and awaits until a response with an accepted status
@@ -118,7 +201,7 @@ impl Client {
 		channel: C,
 		request: &'a Request,
 	) -> Result<reqwest::Response, SpawnError> {
-		request.spawn_returning_with(&self.pool, channel).await
+		self.spawn_returning_with(&self.pool, channel, request).await
 	}
 
 	/// Spawn a returning job. Accetps a closure which lets you set custom job
@@ -130,6 +213,75 @@ impl Client {
 		request: &'a Request,
 		cfg: impl for<'b> FnOnce(&'b mut JobBuilder),
 	) -> Result<reqwest::Response, SpawnError> {
-		request.spawn_returning_with_cfg(&self.pool, channel, cfg).await
+		self.spawn_returning_with_cfg(&self.pool, channel, cfg, request).await
+	}
+
+	/// Adds the request to the queue using the given executor, and awaits until
+	/// the request has been successfully completed, returning the received
+	/// response.
+	pub async fn spawn_returning_with<'a, E, C>(
+		&'a self,
+		pool: E,
+		channel: C,
+		request: &Request,
+	) -> Result<reqwest::Response, SpawnError>
+	where
+		E: sqlx::Executor<'a, Database = Postgres>,
+		C: Into<Cow<'static, str>>,
+	{
+		// Put a sender in the sender map so the job can use it
+		let uuid = Uuid::new_v4();
+		let (sender, receiver) = oneshot::channel();
+		self.response_sender.lock().unwrap().insert(uuid, sender);
+
+		// Spawn the job
+		job::http_response
+			.builder_with_id(uuid)
+			.set_raw_bytes(&bincode::serialize(request)?)
+			.set_channel_name(channel.into().as_ref())
+			.set_proto(default_job_proto)
+			.spawn(pool)
+			.await?;
+
+		Ok(receiver.await?)
+	}
+
+	/// Spawn a returning job on the given executor. Accepts a closure which
+	/// lets you set custom job parameters, such as if a job should be ordered
+	/// and how many retry attempts should be made. By default jobs are ordered
+	/// and retried 100 000 times.
+	///
+	/// See [`sqlxmq::JobBuilder`] for the available configurations. They
+	/// include:
+	/// * [Number of retries](sqlxmq::JobBuilder::set_retries)
+	/// * [Initial retry backoff](sqlxmq::JobBuilder::set_retry_backoff)
+	/// * [If the job is ordered](sqlxmq::JobBuilder::set_ordered)
+	/// * [Delay before execution](sqlxmq::JobBuilder::set_delay)
+	pub async fn spawn_returning_with_cfg<'a, E, C>(
+		&'a self,
+		executor: E,
+		channel: C,
+		cfg: impl for<'b> FnOnce(&'b mut JobBuilder),
+		request: &Request,
+	) -> Result<reqwest::Response, SpawnError>
+	where
+		E: sqlx::Executor<'a, Database = Postgres>,
+		C: Into<Cow<'static, str>>,
+	{
+		// Put a sender in the sender map so the job can use it
+		let uuid = Uuid::new_v4();
+		let (sender, receiver) = oneshot::channel();
+		self.response_sender.lock().unwrap().insert(uuid, sender);
+
+		// Spawn the job
+		let mut builder = job::http_response.builder_with_id(uuid);
+		let builder = builder.set_proto(default_job_proto);
+		cfg(builder);
+		builder
+			.set_raw_bytes(&bincode::serialize(request)?)
+			.set_channel_name(channel.into().as_ref())
+			.spawn(executor)
+			.await?;
+		Ok(receiver.await?)
 	}
 }
