@@ -69,6 +69,9 @@
 //! * Async runtime and TLS implementation for [`sqlx`]:
 //!     * Any of `runtime-{tokio,actix,async-std}-{rustls,native-tls}`
 
+#![doc(
+	html_logo_url = "https://gitlab.com/famedly/company/backend/libraries/requeuest/-/raw/main/logo.svg"
+)]
 #![deny(missing_docs)]
 
 pub mod client;
