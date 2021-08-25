@@ -11,6 +11,8 @@
 [badge-docs-main-img]: https://img.shields.io/badge/docs-main-informational
 [badge-docs-main-url]: https://famedly.gitlab.io/company/backend/libraries/requeuest/requeuest/index.html
 
+![requeuest logo](logo.svg)
+
 Requeuest (pronounced "recused") is a message queue which acts as an intermediary for HTTP requests, making sure that the sent request gets successfully delivered eventually, meaning that you do not have to implement retry logic for HTTP API requests. The queue uses the [`sqlxmq`] crate to make postgres its store for messages, which avoids the reliability risk of a dedicated message queue service potentially being down. This comes with the trade-off that job runners become part of the library consumer's process, and that a handle to the runner has to be kept alive so jobs can run in the background, since jobs cannot be delegated to a separate runner service.
 
 ## Getting started
