@@ -5,20 +5,10 @@ include:
 
 stages:
   - test
-  - build
   - doc
 
 cargo-check:
   extends: .cargo_check
 
-cargo-build:
-  extends: .cargo_build
-
 pages:
   extends: .cargo_doc
-  variables: 
-    RUSTDOCFLAGS: "--enable-index-page -Zunstable-options"
-
-  script:
-    - cargo +nightly doc -Zrustdoc-map --no-deps
-    - mv target/doc public
