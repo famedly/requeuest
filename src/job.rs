@@ -46,7 +46,7 @@ pub async fn http(mut job: CurrentJob, client: reqwest::Client) -> JobResult {
 	let request: Request = bincode::deserialize(payload)?;
 
 	// construct and send the request
-	let mut builder = client.request(request.method, request.url);
+	let mut builder = client.request(request.method, request.url).headers(request.headers);
 	if let Some(body) = request.body {
 		builder = builder.body(body);
 	}
