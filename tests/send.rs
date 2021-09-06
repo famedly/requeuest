@@ -72,7 +72,6 @@ async fn send_empty() -> color_eyre::eyre::Result<()> {
 		Request::get(format!("http://{}/path?query=foo&param=bar", addr).parse()?, headers);
 
 	client.spawn("channel", &request).await?;
-	println!("sent request");
 
 	server.await?;
 
