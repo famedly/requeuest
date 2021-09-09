@@ -50,3 +50,8 @@ let response = client.spawn_returning("my_service", &request).await?;
 Note that the `spawn_returning` method *will* wait indefinitely (or to be precise, roughly 10^293 years) until a successful response is received, so this will wait forever if a request is sent to e.g. an unregistered domain, or a request to an API which that's guaranteed to always get a response back with a non-200 response code.
 
 [`sqlxmq`]: https://docs.rs/sqlxmq
+
+## Testing
+requeuest's integration tests rely on [`sqlx-database-tester`], which expects a postgres database to be available with a user that has permissions to create, edit and drop databases. Which database(s) to use is set with a postgres url (e.g. `postgres://postgres:password@localhost/`) in the `DATABASE_URL` environment variable, or with an entry in a `.env`. See `sqlx-database-tester`'s documentation for more information.
+
+[`sqlx-database-tester`]: https://gitlab.com/famedly/company/backend/libraries/sqlx-database-tester
