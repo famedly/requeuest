@@ -1,4 +1,32 @@
 # Changelog
+
+## [0.2.1] - 2021-09-15
+
+### Bug Fixes
+
+- Fix configured request headers not being set on sent requests
+
+### Documentation
+
+- Document integration test setup in readme
+- Misc readme improvements
+
+### Internal
+
+- Add missing metadata to Cargo.toml
+- Add logo
+- Add edition to rustfmt.toml
+- Add .env to .gitignore
+
+### Testing
+
+- Add integration tests
+
+### Ci
+
+- Delegate futher to CI template
+- Add postgres service to the `check` job for the integration tests
+
 ## [0.2.0] - 2021-08-23
 
 ### Added
