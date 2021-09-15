@@ -2,12 +2,15 @@
 
 [![pipeline status][badge-pipeline-img]][badge-pipeline-url]
 [![coverage report][badge-coverage-img]][badge-coverage-url]
+[![documentation (docs.rs)][badge-docs-release-img]][badge-docs-release-url]
 [![documentation (main)][badge-docs-main-img]][badge-docs-main-url]
 
 [badge-pipeline-img]: https://gitlab.com/famedly/company/backend/libraries/requeuest/badges/main/pipeline.svg
 [badge-pipeline-url]: https://gitlab.com/famedly/company/backend/libraries/requeuest/-/commits/main
 [badge-coverage-img]: https://gitlab.com/famedly/company/backend/libraries/requeuest/badges/main/coverage.svg
 [badge-coverage-url]: https://gitlab.com/famedly/company/backend/libraries/requeuest/-/commits/main
+[badge-docs-main-img]: https://img.shields.io/crates/v/requeuest?label=docs&color=informational
+[badge-docs-main-url]: https://docs.rs/requeuest
 [badge-docs-main-img]: https://img.shields.io/badge/docs-main-informational
 [badge-docs-main-url]: https://famedly.gitlab.io/company/backend/libraries/requeuest/requeuest/index.html
 
@@ -47,7 +50,7 @@ let request = Request::post("https://example.com/_api/bar/foo".parse()?, Vec::fr
 let response = client.spawn_returning("my_service", &request).await?;
 ```
 
-Note that the `spawn_returning` method *will* wait indefinitely (or to be precise, roughly 10^293 years) until a successful response is received, so this will wait forever if a request is sent to e.g. an unregistered domain, or a request to an API which that's guaranteed to always get a response back with a non-200 response code.
+Note that the `spawn_returning` method *will* wait indefinitely (or to be precise, roughly 10^293 years) until a successful response is received by default, so this will wait forever if a request is sent to e.g. an unregistered domain, or a request to an API which that's guaranteed to always get a response back with a non-200 response code.
 
 [`sqlxmq`]: https://docs.rs/sqlxmq
 
