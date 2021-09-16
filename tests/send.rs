@@ -126,6 +126,7 @@ static RECEIVED_TWO: AtomicBool = AtomicBool::new(false);
 static RECEIVED_THREE: AtomicBool = AtomicBool::new(false);
 /// Verifies that multiple tests sent via a transaction are correctly sent (or
 /// not sent)
+#[ignore]
 #[sqlx_database_tester::test(pool(variable = "pool", skip_migrations))]
 #[ntest::timeout(60_000)]
 async fn transaction() -> color_eyre::eyre::Result<()> {
