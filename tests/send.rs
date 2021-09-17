@@ -10,7 +10,7 @@ use requeuest::{
 	self,
 	client::{Channels, Client},
 	request::Request,
-	HeaderMap,
+	HeaderMap, Url,
 };
 use reqwest::header::{HeaderValue, AUTHORIZATION};
 use tokio::sync::Notify;
@@ -124,9 +124,9 @@ static TRANSACTION_NOTIF: Notify = Notify::const_new();
 static RECEIVED_ONE: AtomicBool = AtomicBool::new(false);
 static RECEIVED_TWO: AtomicBool = AtomicBool::new(false);
 static RECEIVED_THREE: AtomicBool = AtomicBool::new(false);
+
 /// Verifies that multiple tests sent via a transaction are correctly sent (or
 /// not sent)
-#[ignore]
 #[sqlx_database_tester::test(pool(variable = "pool", skip_migrations))]
 #[ntest::timeout(60_000)]
 async fn transaction() -> color_eyre::eyre::Result<()> {
@@ -135,7 +135,7 @@ async fn transaction() -> color_eyre::eyre::Result<()> {
 	let client = Client::new(pool, Channels::All).await?;
 
 	let service = service!(|req: hyper::Request<hyper::Body>| async move {
-		let (_parts, body) = req.into_parts();
+		let body = req.into_body();
 		match hyper::body::to_bytes(body).await?.as_ref() {
 			b"One" => RECEIVED_ONE.store(true, Ordering::SeqCst),
 			b"Two" => RECEIVED_TWO.store(true, Ordering::SeqCst),
@@ -155,12 +155,10 @@ async fn transaction() -> color_eyre::eyre::Result<()> {
 
 	let mut transaction = client.pool().begin().await?;
 
-	let request1 =
-		Request::post(format!("http://{}/", addr).parse()?, b"One".to_vec(), Default::default());
-	let request2 =
-		Request::post(format!("http://{}/", addr).parse()?, b"Two".to_vec(), Default::default());
-	let request3 =
-		Request::post(format!("http://{}/", addr).parse()?, b"Three".to_vec(), Default::default());
+	let url: Url = format!("http://{}/", addr).parse()?;
+	let request1 = Request::post(url.clone(), b"One".to_vec(), Default::default());
+	let request2 = Request::post(url.clone(), b"Two".to_vec(), Default::default());
+	let request3 = Request::post(url, b"Three".to_vec(), Default::default());
 
 	client.spawn_with(&mut transaction, "channel", &request1).await?;
 	client.spawn_with(&mut transaction, "channel", &request2).await?;
@@ -169,6 +167,50 @@ async fn transaction() -> color_eyre::eyre::Result<()> {
 	transaction.commit().await?;
 
 	server.await?;
+
+	Ok(())
+}
+
+static ORDER_NOTIF: Notify = Notify::const_new();
+static ORDER_REQ_NUM: AtomicU32 = AtomicU32::new(1);
+
+/// Verifies that returning requests get delivered sequentially
+#[sqlx_database_tester::test(pool(variable = "pool", skip_migrations))]
+#[ntest::timeout(30_000)]
+async fn order() -> color_eyre::eyre::Result<()> {
+	install_eyre();
+	requeuest::migrate(&pool).await?;
+	let client = Client::new(pool, Channels::All).await?;
+
+	let service = service!(|req: hyper::Request<hyper::Body>| async move {
+		let num = ORDER_REQ_NUM.fetch_add(1, Ordering::AcqRel);
+		let body = hyper::body::to_bytes(req.into_body()).await?;
+		let req_num = String::from_utf8_lossy(&body).parse::<u32>();
+
+		if req_num != Ok(num) {
+			panic!("Wrong order");
+		}
+		if num == 3 {
+			ORDER_NOTIF.notify_one()
+		}
+
+		Ok::<_, hyper::Error>(hyper::Response::new(hyper::Body::from("OK")))
+	});
+
+	let (addr, server) = server!(service, async { ORDER_NOTIF.notified().await });
+
+	let url: Url = format!("http://{}/", addr).parse()?;
+	let request1 = Request::post(url.clone(), b"1".to_vec(), Default::default());
+	let request2 = Request::post(url.clone(), b"2".to_vec(), Default::default());
+	let request3 = Request::post(url, b"3".to_vec(), Default::default());
+
+	let handle = tokio::spawn(async move { server.await });
+
+	client.spawn_returning("order", &request1).await?;
+	client.spawn_returning("order", &request2).await?;
+	client.spawn_returning("order", &request3).await?;
+
+	handle.await??;
 
 	Ok(())
 }
