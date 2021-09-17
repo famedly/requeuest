@@ -11,7 +11,7 @@ use uuid::Uuid;
 use crate::{error::SpawnError, job, job::ResponseSender, request::Request};
 
 fn default_job_proto<'a>(builder: &'a mut JobBuilder<'a>) -> &'a mut JobBuilder<'a> {
-	builder.set_retries(100_000).set_ordered(true)
+	builder.set_retries(100_000).set_ordered(false)
 }
 
 /// The list of channels the client should listen on
@@ -96,13 +96,13 @@ impl Client {
 	}
 
 	/// Spawn a job. Accepts a closure which lets you set custom job
-	/// parameters, such as if a job should be ordered and how many retry
-	/// attempts should be made. By default jobs are ordered and retried 100 000
-	/// times. See [`sqlxmq::JobBuilder`](sqlxmq::JobBuilder)
+	/// parameters, such as  retry attempts should be made. By default jobs are
+	/// retried 100 000 times. See [`sqlxmq::JobBuilder`](sqlxmq::JobBuilder)
 	/// for available configurations. They include:
 	/// * [Number of retries](sqlxmq::JobBuilder::set_retries)
 	/// * [Initial retry backoff](sqlxmq::JobBuilder::set_retry_backoff)
-	/// * [If the job is ordered](sqlxmq::JobBuilder::set_ordered)
+	/// * <del>If the job is ordered</del> Ordering is currently disabled due to
+	///   a bug in [`sqlxmq`].
 	/// * [Delay before execution](sqlxmq::JobBuilder::set_delay)
 	///
 	/// # Example
@@ -164,9 +164,9 @@ impl Client {
 
 	/// Adds the given request to the queue on the specified channel using the
 	/// given executor. Returns the uuid of the spawned job. Accepts a closure
-	/// which lets you set custom job parameters, such as if a job should be
-	/// ordered and how many retry attempts should be made. See
-	/// [`sqlxmq::JobBuilder`] for available configurations.
+	/// which lets you set custom job parameters, such as how many retry
+	/// attempts should be made. See [`sqlxmq::JobBuilder`] for available
+	/// configurations.
 	pub async fn spawn_with_cfg<'a, E, C>(
 		&'a self,
 		pool: E,
@@ -185,6 +185,7 @@ impl Client {
 		let uuid = builder
 			.set_channel_name(channel.into().as_ref())
 			.set_raw_bytes(&bincode::serialize(request)?)
+			.set_ordered(false)
 			.spawn(pool)
 			.await?;
 
@@ -247,15 +248,15 @@ impl Client {
 	}
 
 	/// Spawn a returning job on the given executor. Accepts a closure which
-	/// lets you set custom job parameters, such as if a job should be ordered
-	/// and how many retry attempts should be made. By default jobs are ordered
-	/// and retried 100 000 times.
+	/// lets you set custom job parameters, such as  how many retry attempts
+	/// should be made. By default jobs are retried 100 000 times.
 	///
 	/// See [`sqlxmq::JobBuilder`] for the available configurations. They
 	/// include:
 	/// * [Number of retries](sqlxmq::JobBuilder::set_retries)
 	/// * [Initial retry backoff](sqlxmq::JobBuilder::set_retry_backoff)
-	/// * [If the job is ordered](sqlxmq::JobBuilder::set_ordered)
+	/// * <del>If the job is ordered</del> Ordering is currently disabled due to
+	///   a bug in [`sqlxmq`].
 	/// * [Delay before execution](sqlxmq::JobBuilder::set_delay)
 	pub async fn spawn_returning_with_cfg<'a, E, C>(
 		&'a self,
@@ -280,6 +281,7 @@ impl Client {
 		builder
 			.set_raw_bytes(&bincode::serialize(request)?)
 			.set_channel_name(channel.into().as_ref())
+			.set_ordered(false)
 			.spawn(executor)
 			.await?;
 		Ok(receiver.await?)
