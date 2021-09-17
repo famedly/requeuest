@@ -9,8 +9,8 @@
 [badge-pipeline-url]: https://gitlab.com/famedly/company/backend/libraries/requeuest/-/commits/main
 [badge-coverage-img]: https://gitlab.com/famedly/company/backend/libraries/requeuest/badges/main/coverage.svg
 [badge-coverage-url]: https://gitlab.com/famedly/company/backend/libraries/requeuest/-/commits/main
-[badge-docs-main-img]: https://img.shields.io/crates/v/requeuest?label=docs&color=informational
-[badge-docs-main-url]: https://docs.rs/requeuest
+[badge-docs-release-img]: https://img.shields.io/crates/v/requeuest?label=docs&color=informational
+[badge-docs-release-url]: https://docs.rs/requeuest
 [badge-docs-main-img]: https://img.shields.io/badge/docs-main-informational
 [badge-docs-main-url]: https://famedly.gitlab.io/company/backend/libraries/requeuest/requeuest/index.html
 
