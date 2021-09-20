@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.2.2] - 2021-09-20
+
+### Bug Fixes
+
+- Disable job ordering to prevent triggering bug in upstream ([!31])
+
+  Ordered jobs have been forcibly disabled to avoid triggering a constraint violation in the postgres database. This is a temporary workaround, and a more proper fix will be developed later.
+
+### Internal
+
+- Correct URL for documentation badge in readme ([!30])
+- Upgrade `sqlxmq` and `tokio` dependencies
+
+[!30]: https://gitlab.com/famedly/company/backend/libraries/requeuest/-/merge_requests/30
+[!31]: https://gitlab.com/famedly/company/backend/libraries/requeuest/-/merge_requests/31
+
 ## [0.2.1] - 2021-09-15
 
 ### Bug Fixes
