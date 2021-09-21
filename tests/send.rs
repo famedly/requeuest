@@ -2,7 +2,7 @@
 
 use std::{
 	iter::FromIterator,
-	sync::atomic::{AtomicBool, AtomicU32, Ordering},
+	sync::atomic::{AtomicU32, Ordering},
 	time::Duration,
 };
 
@@ -120,57 +120,6 @@ async fn retry() -> color_eyre::eyre::Result<()> {
 	Ok(())
 }
 
-static TRANSACTION_NOTIF: Notify = Notify::const_new();
-static RECEIVED_ONE: AtomicBool = AtomicBool::new(false);
-static RECEIVED_TWO: AtomicBool = AtomicBool::new(false);
-static RECEIVED_THREE: AtomicBool = AtomicBool::new(false);
-
-/// Verifies that multiple tests sent via a transaction are correctly sent (or
-/// not sent)
-#[sqlx_database_tester::test(pool(variable = "pool", skip_migrations))]
-#[ntest::timeout(60_000)]
-async fn transaction() -> color_eyre::eyre::Result<()> {
-	install_eyre();
-	requeuest::migrate(&pool).await?;
-	let client = Client::new(pool, Channels::All).await?;
-
-	let service = service!(|req: hyper::Request<hyper::Body>| async move {
-		let body = req.into_body();
-		match hyper::body::to_bytes(body).await?.as_ref() {
-			b"One" => RECEIVED_ONE.store(true, Ordering::SeqCst),
-			b"Two" => RECEIVED_TWO.store(true, Ordering::SeqCst),
-			b"Three" => RECEIVED_THREE.store(true, Ordering::SeqCst),
-			_ => panic!("Unexpected body"),
-		};
-		if RECEIVED_ONE.load(Ordering::SeqCst)
-			&& RECEIVED_TWO.load(Ordering::SeqCst)
-			&& RECEIVED_THREE.load(Ordering::SeqCst)
-		{
-			TRANSACTION_NOTIF.notify_one();
-		}
-		Ok::<_, hyper::Error>(hyper::Response::new(hyper::Body::from("OK")))
-	});
-
-	let (addr, server) = server!(service, async { TRANSACTION_NOTIF.notified().await });
-
-	let mut transaction = client.pool().begin().await?;
-
-	let url: Url = format!("http://{}/", addr).parse()?;
-	let request1 = Request::post(url.clone(), b"One".to_vec(), Default::default());
-	let request2 = Request::post(url.clone(), b"Two".to_vec(), Default::default());
-	let request3 = Request::post(url, b"Three".to_vec(), Default::default());
-
-	client.spawn_with(&mut transaction, "channel", &request1).await?;
-	client.spawn_with(&mut transaction, "channel", &request2).await?;
-	client.spawn_with(&mut transaction, "channel", &request3).await?;
-
-	transaction.commit().await?;
-
-	server.await?;
-
-	Ok(())
-}
-
 static ORDER_NOTIF: Notify = Notify::const_new();
 static ORDER_REQ_NUM: AtomicU32 = AtomicU32::new(1);
 
@@ -206,9 +155,12 @@ async fn order() -> color_eyre::eyre::Result<()> {
 
 	let handle = tokio::spawn(async move { server.await });
 
-	client.spawn_returning("order", &request1).await?;
-	client.spawn_returning("order", &request2).await?;
-	client.spawn_returning("order", &request3).await?;
+	let cfg = |job: &mut sqlxmq::JobBuilder| {
+		job.set_ordered(true);
+	};
+	client.spawn_cfg("order", &request1, cfg).await?;
+	client.spawn_cfg("order", &request2, cfg).await?;
+	client.spawn_cfg("order", &request3, cfg).await?;
 
 	handle.await??;
 
