@@ -220,21 +220,10 @@ async fn retrying_spawn<'a>(job: &'a JobBuilder<'a>, pool: &PgPool) -> Result<Uu
 		let result = job.spawn(pool).await;
 		// Retry on constraint violations,
 		match result {
-			Err(sqlx::Error::Database(e)) if should_retry(&*e) => continue,
+			Err(e) if sqlxmq::should_retry(&e) => continue,
 			Err(e) => return Err(e.into()),
 			Ok(uuid) => break uuid,
 		}
 	};
 	Ok(uuid)
-}
-
-/// Check whether the given database error means a retry is needed.
-// TODO: Move to upstream retry checking when it adds the
-// mq_msgs_after_message_id_fkey constraint to the retry conditions.
-fn should_retry(error: &dyn sqlx::error::DatabaseError) -> bool {
-	matches!(
-		error.constraint(),
-		Some("mq_msgs_channel_name_channel_args_after_message_id_idx")
-			| Some("mq_msgs_after_message_id_fkey")
-	)
 }
