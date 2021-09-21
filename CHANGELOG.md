@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.0] - 2021-09-21
+
+### Bug Fixes
+
+- Fix constraint violation issues with ordered jobs ([!33])
+
+### Removed
+
+- Remove functions for spawning jobs via transactions ([!33]).
+
+### Miscellaneous Tasks
+
+- Correct url for documentation badge in readme ([!30])
+
+[!30]: https://gitlab.com/famedly/company/backend/libraries/requeuest/-/merge_requests/30
+[!33]: https://gitlab.com/famedly/company/backend/libraries/requeuest/-/merge_requests/33
+
+
 ## [0.2.1] - 2021-09-15
 
 ### Bug Fixes
