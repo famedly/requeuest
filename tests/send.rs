@@ -2,7 +2,7 @@
 
 use std::{
 	iter::FromIterator,
-	sync::atomic::{AtomicU32, Ordering},
+	sync::atomic::{AtomicBool, AtomicU32, Ordering},
 	time::Duration,
 };
 
@@ -163,6 +163,40 @@ async fn order() -> color_eyre::eyre::Result<()> {
 	client.spawn_cfg("order", &request3, cfg).await?;
 
 	handle.await??;
+
+	Ok(())
+}
+
+static RECEIVED_REQUEST: AtomicBool = AtomicBool::new(false);
+
+/// Verifies that clearing requests for a queue works
+#[sqlx_database_tester::test(pool(variable = "pool", skip_migrations))]
+#[ntest::timeout(30_000)]
+async fn clear() -> color_eyre::eyre::Result<()> {
+	install_eyre();
+	requeuest::migrate(&pool).await?;
+	let client = Client::new(pool, Channels::All).await?;
+
+	let service = service!(|_| async move {
+		RECEIVED_REQUEST.store(true, Ordering::SeqCst);
+		Ok::<_, hyper::Error>(hyper::Response::new(hyper::Body::from("ERR")))
+	});
+
+	let (addr, server) =
+		server!(service, async { tokio::time::sleep(Duration::from_secs(1)).await });
+
+	let request = Request::get(format!("http://{}/", addr).parse()?, Default::default());
+
+	client
+		.spawn_cfg("clear", &request, |req| {
+			req.set_delay(Duration::from_millis(500));
+		})
+		.await?;
+	client.clear(Channels::List(&["clear"])).await?;
+
+	server.await?;
+
+	assert!(!RECEIVED_REQUEST.load(Ordering::SeqCst), "Failed to clear");
 
 	Ok(())
 }
