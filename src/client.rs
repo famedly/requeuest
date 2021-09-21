@@ -74,6 +74,14 @@ impl Client {
 		&self.pool
 	}
 
+	/// Removes all pending jobs from the given set of channels.
+	pub async fn clear(&self, channels: Channels<'_>) -> Result<(), sqlx::Error> {
+		match channels {
+			Channels::All => sqlxmq::clear_all(&self.pool).await,
+			Channels::List(list) => sqlxmq::clear(&self.pool, list).await,
+		}
+	}
+
 	/// Spawns a request on the given channel. Returns the UUID of the spawned
 	/// job.
 	///
