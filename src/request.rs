@@ -28,6 +28,8 @@ pub struct Request {
 /// The kinds of categories of response codes which a response can accept
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AcceptedResponse {
+	/// Accept information responses, i.e. code range 100-199
+	Informational,
 	/// Accept success responses, i.e. code range 200-299.
 	Success,
 	/// Accept redirection responses, i.e. code range 300-399.
@@ -46,6 +48,7 @@ impl AcceptedResponse {
 	/// Checked whether this acceptance filter accepts the given status code.
 	pub fn accepts(self, status: StatusCode) -> bool {
 		match self {
+			AcceptedResponse::Informational => status.is_informational(),
 			AcceptedResponse::Success => status.is_success(),
 			AcceptedResponse::Redirection => status.is_redirection(),
 			AcceptedResponse::ClientError => status.is_client_error(),
