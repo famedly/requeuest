@@ -28,6 +28,8 @@ pub struct Request {
 /// The kinds of categories of response codes which a response can accept
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AcceptedResponse {
+	/// Accept information responses, i.e. code range 100-199
+	Informational,
 	/// Accept success responses, i.e. code range 200-299.
 	Success,
 	/// Accept redirection responses, i.e. code range 300-399.
@@ -46,6 +48,7 @@ impl AcceptedResponse {
 	/// Checked whether this acceptance filter accepts the given status code.
 	pub fn accepts(self, status: StatusCode) -> bool {
 		match self {
+			AcceptedResponse::Informational => status.is_informational(),
 			AcceptedResponse::Success => status.is_success(),
 			AcceptedResponse::Redirection => status.is_redirection(),
 			AcceptedResponse::ClientError => status.is_client_error(),
@@ -186,11 +189,34 @@ impl Request {
 mod tests {
 	use reqwest::{
 		header::{HeaderValue, AUTHORIZATION},
-		Method,
+		Method, StatusCode,
 	};
 	use url::Url;
 
 	use super::Request;
+
+	/// Convenience function to convert a u16 to status code and unwrap the
+	/// result
+	fn status_code(code: u16) -> StatusCode {
+		StatusCode::from_u16(code).unwrap()
+	}
+
+	/// Checks that `AcceptedResponse` accepts and rejects the right status
+	/// codes
+	#[test]
+	fn accepted_range() {
+		for code in (100..1000).map(status_code) {
+			use super::AcceptedResponse::*;
+			let num = code.as_u16();
+			assert_eq!(Informational.accepts(code), (100..200).contains(&num));
+			assert_eq!(Success.accepts(code), (200..300).contains(&num));
+			assert_eq!(Redirection.accepts(code), (300..400).contains(&num));
+			assert_eq!(ClientError.accepts(code), (400..500).contains(&num));
+			assert_eq!(ServerError.accepts(code), (500..600).contains(&num));
+			assert_eq!(Range(423, 489).accepts(code), (423..=489).contains(&num));
+			assert_eq!(Single(200).accepts(code), num == 200);
+		}
+	}
 
 	#[test]
 	fn serialization() {
