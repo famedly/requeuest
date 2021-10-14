@@ -21,7 +21,7 @@ type SenderMap = HashMap<Uuid, oneshot::Sender<reqwest::Response>>;
 pub(crate) struct ResponseSender(Arc<Mutex<SenderMap>>);
 
 impl ResponseSender {
-	/// Contructs a new response sender.
+	/// Constructs a new response sender.
 	pub fn new() -> ResponseSender {
 		ResponseSender(Arc::new(Mutex::new(HashMap::new())))
 	}

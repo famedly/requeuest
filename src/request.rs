@@ -82,7 +82,7 @@ impl Request {
 		}
 	}
 
-	/// Contructs a `POST` request to be sent to the given url with the given
+	/// Constructs a `POST` request to be sent to the given url with the given
 	/// body and headers.
 	pub fn post(url: Url, body: Vec<u8>, headers: HeaderMap) -> Self {
 		Self {
