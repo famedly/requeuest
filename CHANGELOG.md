@@ -42,7 +42,7 @@
 
 ### Ci
 
-- Delegate futher to CI template
+- Delegate further to CI template
 - Add postgres service to the `check` job for the integration tests
 
 ## [0.2.0] - 2021-08-23
