@@ -58,3 +58,9 @@ Note that the `spawn_returning` method *will* wait indefinitely (or to be precis
 requeuest's integration tests rely on [`sqlx-database-tester`], which expects a postgres database to be available with a user that has permissions to create, edit and drop databases. Which database(s) to use is set with a postgres url (e.g. `postgres://postgres:password@localhost/`) in the `DATABASE_URL` environment variable, or with an entry in a `.env`. See `sqlx-database-tester`'s documentation for more information.
 
 [`sqlx-database-tester`]: https://gitlab.com/famedly/company/backend/libraries/sqlx-database-tester
+
+## Pre-commit usage
+
+1. If not installed, install with your package manager, or `pip install --user pre-commit`
+2. Run `pre-commit autoupdate` to update the pre-commit config to use the newest template
+3. Run `pre-commit install` to install the pre-commit hooks to your local environment
