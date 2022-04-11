@@ -1,5 +1,7 @@
 //! Tests that verify that HTTP requeuests are correctly sent
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use std::{
 	iter::FromIterator,
 	sync::atomic::{AtomicBool, AtomicU32, Ordering},
@@ -18,7 +20,7 @@ use tokio::sync::Notify;
 static INSTALL_EYRE: std::sync::Once = std::sync::Once::new();
 
 fn install_eyre() {
-	INSTALL_EYRE.call_once(|| color_eyre::install().expect("Installing eyre failed"))
+	INSTALL_EYRE.call_once(|| color_eyre::install().expect("Installing eyre failed"));
 }
 
 /// Crate a hyper `Service` with the given future as its `service_fn`
@@ -106,7 +108,7 @@ async fn retry() -> color_eyre::eyre::Result<()> {
 
 	let (addr, server) = server!(service, async { RETRY_NOTIF.notified().await });
 
-	let request = Request::get(format!("http://{}/", addr).parse()?, Default::default());
+	let request = Request::get(format!("http://{}/", addr).parse()?, HeaderMap::default());
 
 	client
 		.spawn_cfg("channel", &request, |req| {
@@ -140,7 +142,7 @@ async fn order() -> color_eyre::eyre::Result<()> {
 			panic!("Wrong order");
 		}
 		if num == 3 {
-			ORDER_NOTIF.notify_one()
+			ORDER_NOTIF.notify_one();
 		}
 
 		Ok::<_, hyper::Error>(hyper::Response::new(hyper::Body::from("OK")))
@@ -149,9 +151,9 @@ async fn order() -> color_eyre::eyre::Result<()> {
 	let (addr, server) = server!(service, async { ORDER_NOTIF.notified().await });
 
 	let url: Url = format!("http://{}/", addr).parse()?;
-	let request1 = Request::post(url.clone(), b"1".to_vec(), Default::default());
-	let request2 = Request::post(url.clone(), b"2".to_vec(), Default::default());
-	let request3 = Request::post(url, b"3".to_vec(), Default::default());
+	let request1 = Request::post(url.clone(), b"1".to_vec(), HeaderMap::default());
+	let request2 = Request::post(url.clone(), b"2".to_vec(), HeaderMap::default());
+	let request3 = Request::post(url, b"3".to_vec(), HeaderMap::default());
 
 	let handle = tokio::spawn(async move { server.await });
 
@@ -185,7 +187,7 @@ async fn clear() -> color_eyre::eyre::Result<()> {
 	let (addr, server) =
 		server!(service, async { tokio::time::sleep(Duration::from_secs(1)).await });
 
-	let request = Request::get(format!("http://{}/", addr).parse()?, Default::default());
+	let request = Request::get(format!("http://{}/", addr).parse()?, HeaderMap::default());
 
 	client
 		.spawn_cfg("clear", &request, |req| {

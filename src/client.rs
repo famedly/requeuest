@@ -10,11 +10,13 @@ use uuid::Uuid;
 
 use crate::{error::SpawnError, job, job::ResponseSender, request::Request};
 
+/// Prototype function that applies default settings for sqlx jobs
 fn default_job_proto<'a>(builder: &'a mut JobBuilder<'a>) -> &'a mut JobBuilder<'a> {
 	builder.set_retries(100_000).set_ordered(true)
 }
 
 /// The list of channels the client should listen on
+#[derive(Debug)]
 pub enum Channels<'a> {
 	/// Listen on all channels requeuests are created for
 	All,
@@ -65,11 +67,13 @@ impl Client {
 
 	/// Returns true if the handle to the listener has been taken out of the
 	/// client with the `take_listener` method.
+	#[must_use]
 	pub fn is_detached(&self) -> bool {
 		self.listener.is_none()
 	}
 
 	/// Get a reference to the client's database connection.
+	#[must_use]
 	pub fn pool(&self) -> &PgPool {
 		&self.pool
 	}
@@ -164,6 +168,7 @@ impl Client {
 		// Put a sender in the sender map so the job can use it
 		let uuid = Uuid::new_v4();
 		let (sender, receiver) = oneshot::channel();
+		#[allow(clippy::unwrap_used)] // We don't handle poisoning
 		self.response_sender.lock().unwrap().insert(uuid, sender);
 
 		// Spawn the job
@@ -196,6 +201,7 @@ impl Client {
 		// Put a sender in the sender map so the job can use it
 		let uuid = Uuid::new_v4();
 		let (sender, receiver) = oneshot::channel();
+		#[allow(clippy::unwrap_used)] // We don't handle poisoning
 		self.response_sender.lock().unwrap().insert(uuid, sender);
 
 		// Spawn the job
