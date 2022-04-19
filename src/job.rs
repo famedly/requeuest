@@ -14,6 +14,7 @@ use crate::{error::JobError, request::Request};
 /// Alias for the result type sqlxmq jobs expect.
 pub type JobResult = Result<(), Box<dyn std::error::Error + Send + Sync + 'static>>;
 
+/// Alias for a map from request UUID to associated oneshot sender
 type SenderMap = HashMap<Uuid, oneshot::Sender<reqwest::Response>>;
 
 /// Mechanism for returning responses from successful jobs.
@@ -82,6 +83,7 @@ pub async fn http_response(
 	if request.accept_responses.iter().any(|accepted| accepted.accepts(response.status())) {
 		job.complete().await?;
 
+		#[allow(clippy::unwrap_used)] // We don't handle poisoning
 		let sender = sender.0.lock().unwrap().remove(&job.id()).ok_or(JobError::MissingSender)?;
 		sender.send(response).or(Err(JobError::MissingReceiver))?;
 	}

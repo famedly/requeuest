@@ -45,7 +45,8 @@ pub enum AcceptedResponse {
 }
 
 impl AcceptedResponse {
-	/// Checked whether this acceptance filter accepts the given status code.
+	/// Check whether this acceptance filter accepts the given status code.
+	#[must_use]
 	pub fn accepts(self, status: StatusCode) -> bool {
 		match self {
 			AcceptedResponse::Informational => status.is_informational(),
@@ -59,8 +60,9 @@ impl AcceptedResponse {
 	}
 }
 
+/// Returns the set of responses which are considered valid by default
 fn default_accepted_responses() -> HashSet<AcceptedResponse> {
-	std::array::IntoIter::new([AcceptedResponse::Success]).collect()
+	IntoIterator::into_iter([AcceptedResponse::Success]).into_iter().collect()
 }
 
 impl Request {
@@ -75,6 +77,7 @@ impl Request {
 	/// # Ok(())
 	/// # }
 	/// ```
+	#[must_use]
 	pub fn get(url: Url, headers: HeaderMap) -> Self {
 		Self {
 			url,
@@ -87,6 +90,7 @@ impl Request {
 
 	/// Constructs a `POST` request to be sent to the given url with the given
 	/// body and headers.
+	#[must_use]
 	pub fn post(url: Url, body: Vec<u8>, headers: HeaderMap) -> Self {
 		Self {
 			url,
@@ -98,6 +102,7 @@ impl Request {
 	}
 
 	/// Constructs a `HEAD` request to be sent to the given url.
+	#[must_use]
 	pub fn head(url: Url, headers: HeaderMap) -> Self {
 		Self {
 			url,
@@ -109,6 +114,7 @@ impl Request {
 	}
 
 	/// Constructs a `DELETE` request to be sent to the given url.
+	#[must_use]
 	pub fn delete(url: Url, body: Option<Vec<u8>>, headers: HeaderMap) -> Self {
 		Self {
 			url,
@@ -120,6 +126,7 @@ impl Request {
 	}
 
 	/// Constructs a `PUT` request to be sent to the given url.
+	#[must_use]
 	pub fn put(url: Url, body: Vec<u8>, headers: HeaderMap) -> Self {
 		Self {
 			url,
@@ -133,8 +140,8 @@ impl Request {
 	/// Convert a reqwest request into a requeuest request.
 	pub fn from_reqwest(mut foreign: reqwest::Request) -> Self {
 		Self {
-			url: foreign.url().to_owned(),
-			body: foreign.body().and_then(|b| b.as_bytes()).map(|b| b.to_vec()),
+			url: foreign.url().clone(),
+			body: foreign.body().and_then(reqwest::Body::as_bytes).map(<[_]>::to_vec),
 			method: std::mem::take(foreign.method_mut()),
 			headers: std::mem::take(foreign.headers_mut()),
 			accept_responses: default_accepted_responses(),
@@ -187,8 +194,9 @@ impl Request {
 
 #[cfg(test)]
 mod tests {
+	#![allow(clippy::unwrap_used)]
 	use reqwest::{
-		header::{HeaderValue, AUTHORIZATION},
+		header::{HeaderMap, HeaderValue, AUTHORIZATION},
 		Method, StatusCode,
 	};
 	use url::Url;
@@ -222,7 +230,7 @@ mod tests {
 	fn serialization() {
 		let url = Url::parse("https://example.com/").unwrap();
 		let body = b"Some cool data".to_vec();
-		let request = Request::post(url, body, Default::default());
+		let request = Request::post(url, body, HeaderMap::default());
 		let serialized = bincode::serialize(&request).unwrap();
 		let deserialized: Request = bincode::deserialize(&serialized).unwrap();
 
