@@ -70,8 +70,9 @@ async fn send_empty() -> color_eyre::eyre::Result<()> {
 
 	let headers =
 		HeaderMap::from_iter([(AUTHORIZATION, HeaderValue::from_static("Bearer: secret"))]);
-	let request =
-		Request::get(format!("http://{}/path?query=foo&param=bar", addr).parse()?, headers);
+	let request = Request::get(format!("http://{}/path?query=foo&param=bar", addr).as_str())?
+		.headers(headers)
+		.build();
 
 	client.spawn("channel", &request).await?;
 
@@ -108,7 +109,7 @@ async fn retry() -> color_eyre::eyre::Result<()> {
 
 	let (addr, server) = server!(service, async { RETRY_NOTIF.notified().await });
 
-	let request = Request::get(format!("http://{}/", addr).parse()?, HeaderMap::default());
+	let request = Request::get(format!("http://{}/", addr).as_str())?.build();
 
 	client
 		.spawn_cfg("channel", &request, |req| {
@@ -151,9 +152,9 @@ async fn order() -> color_eyre::eyre::Result<()> {
 	let (addr, server) = server!(service, async { ORDER_NOTIF.notified().await });
 
 	let url: Url = format!("http://{}/", addr).parse()?;
-	let request1 = Request::post(url.clone(), b"1".to_vec(), HeaderMap::default());
-	let request2 = Request::post(url.clone(), b"2".to_vec(), HeaderMap::default());
-	let request3 = Request::post(url, b"3".to_vec(), HeaderMap::default());
+	let request1 = Request::post(url.clone(), b"1".to_vec())?.build();
+	let request2 = Request::post(url.clone(), b"2".to_vec())?.build();
+	let request3 = Request::post(url.clone(), b"3".to_vec())?.build();
 
 	let handle = tokio::spawn(async move { server.await });
 
@@ -187,7 +188,7 @@ async fn clear() -> color_eyre::eyre::Result<()> {
 	let (addr, server) =
 		server!(service, async { tokio::time::sleep(Duration::from_secs(1)).await });
 
-	let request = Request::get(format!("http://{}/", addr).parse()?, HeaderMap::default());
+	let request = Request::get(format!("http://{}/", addr).as_str())?.build();
 
 	client
 		.spawn_cfg("clear", &request, |req| {

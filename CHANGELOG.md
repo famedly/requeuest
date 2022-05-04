@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Builder interface added to `Request`. Available via `Request::builder()`. ([!42])
+
+### Changed
+
+- The methods `Request::{get, head, delete, put, post}` now return a builder
+  with the corresponding method. Additionally, they now expect only a url or a url and a body for `post` and `put`.  ([!42])
+
+[!42]: https://gitlab.com/famedly/company/backend/libraries/requeuest/-/merge_requests/42
+
 ## [0.3.0] - 2021-09-21
 
 ### Bug Fixes

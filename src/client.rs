@@ -95,7 +95,7 @@ impl Client {
 	/// use requeuest::{Client, Request, client::Channels};
 	///
 	/// let client = Client::new(pool, Channels::List(&["my_service"])).await?;
-	/// let request = Request::get("https://foo.bar/baz".parse()?, Default::default());
+	/// let request = Request::get("https://foo.bar/baz")?.build();
 	/// client.spawn("my_service", &request).await?;
 	/// # Ok(())
 	/// # }
