@@ -1,27 +1,32 @@
 //! Contains the definition of the request which gets (de)serialized and sent to
 //! the database
 
-use std::collections::HashSet;
+use std::{collections::HashSet, convert::TryInto};
 
 use reqwest::{header::HeaderMap, Method, StatusCode};
 use serde::{Deserialize, Serialize};
+use typed_builder::TypedBuilder;
 use url::Url;
 
 /// An HTTP request to be sent through the job queue.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, TypedBuilder)]
+#[must_use]
 pub struct Request {
 	/// The url to send the request to.
 	pub url: Url,
 	/// The body of the request.
+	#[builder(default, setter(strip_option, into))]
 	pub body: Option<Vec<u8>>,
 	/// The HTTP method to connect with
 	#[serde(with = "http_serde::method")]
 	pub method: Method,
 	/// The HTTP headers to set for the request.
 	#[serde(with = "http_serde::header_map")]
+	#[builder(default)]
 	pub headers: HeaderMap,
 	/// A set of HTTP response codes which won't cause a retry.
 	#[serde(default = "default_accepted_responses")]
+	#[builder(default=default_accepted_responses())]
 	pub accept_responses: HashSet<AcceptedResponse>,
 }
 
@@ -65,76 +70,66 @@ fn default_accepted_responses() -> HashSet<AcceptedResponse> {
 	IntoIterator::into_iter([AcceptedResponse::Success]).into_iter().collect()
 }
 
+/// Return builder type for methods with predefined method
+type WithUrlAndMethodBuilder = RequestBuilder<((Url,), (), (Method,), (), ())>;
+/// Return builder type for methods with predefined method and body
+type WithUrlAndBodyAndMethodBuilder =
+	RequestBuilder<((Url,), (Option<Vec<u8>>,), (Method,), (), ())>;
+
 impl Request {
-	/// Constructs a `GET` request to the given address.
+	/// Constructs a `GET` request builder.
 	///
 	/// # Example
 	/// ```
-	/// # use url::Url;
 	/// # use requeuest::Request;
 	/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-	/// Request::get(Url::parse("https://example.com")?, Default::default());
+	/// Request::get("https://example.com")?.build();
 	/// # Ok(())
 	/// # }
 	/// ```
-	#[must_use]
-	pub fn get(url: Url, headers: HeaderMap) -> Self {
-		Self {
-			url,
-			body: None,
-			method: Method::GET,
-			headers,
-			accept_responses: default_accepted_responses(),
-		}
+	pub fn get<T>(url: T) -> Result<WithUrlAndMethodBuilder, <T as TryInto<Url>>::Error>
+	where
+		T: TryInto<Url>,
+	{
+		Ok(Request::builder().method(Method::GET).url(url.try_into()?))
 	}
 
-	/// Constructs a `POST` request to be sent to the given url with the given
-	/// body and headers.
-	#[must_use]
-	pub fn post(url: Url, body: Vec<u8>, headers: HeaderMap) -> Self {
-		Self {
-			url,
-			body: Some(body),
-			method: Method::POST,
-			headers,
-			accept_responses: default_accepted_responses(),
-		}
+	/// Constructs a `HEAD` request builder.
+	pub fn head<T>(url: T) -> Result<WithUrlAndMethodBuilder, <T as TryInto<Url>>::Error>
+	where
+		T: TryInto<Url>,
+	{
+		Ok(Request::builder().method(Method::HEAD).url(url.try_into()?))
 	}
 
-	/// Constructs a `HEAD` request to be sent to the given url.
-	#[must_use]
-	pub fn head(url: Url, headers: HeaderMap) -> Self {
-		Self {
-			url,
-			body: None,
-			method: Method::HEAD,
-			headers,
-			accept_responses: default_accepted_responses(),
-		}
+	/// Constructs a `DELETE` request builder.
+	pub fn delete<T>(url: T) -> Result<WithUrlAndMethodBuilder, <T as TryInto<Url>>::Error>
+	where
+		T: TryInto<Url>,
+	{
+		Ok(Request::builder().method(Method::DELETE).url(url.try_into()?))
 	}
 
-	/// Constructs a `DELETE` request to be sent to the given url.
-	#[must_use]
-	pub fn delete(url: Url, body: Option<Vec<u8>>, headers: HeaderMap) -> Self {
-		Self {
-			url,
-			body,
-			method: Method::DELETE,
-			headers,
-			accept_responses: default_accepted_responses(),
-		}
+	/// Constructs a `POST` request builder with the given body
+	pub fn post<T>(
+		url: T,
+		body: impl Into<Vec<u8>>,
+	) -> Result<WithUrlAndBodyAndMethodBuilder, <T as TryInto<Url>>::Error>
+	where
+		T: TryInto<Url>,
+	{
+		Ok(Request::builder().method(Method::POST).url(url.try_into()?).body(body))
 	}
 
-	/// Constructs a `PUT` request to be sent to the given url.
-	#[must_use]
-	pub fn put(url: Url, body: Vec<u8>, headers: HeaderMap) -> Self {
-		Self {
-			url,
-			body: Some(body),
-			method: Method::PUT,
-			headers,
-			accept_responses: default_accepted_responses(),
-		}
+	/// Constructs a `PUT` request builder with the given body
+	pub fn put<T>(
+		url: T,
+		body: impl Into<Vec<u8>>,
+	) -> Result<WithUrlAndBodyAndMethodBuilder, <T as TryInto<Url>>::Error>
+	where
+		T: TryInto<Url>,
+	{
+		Ok(Request::builder().method(Method::PUT).url(url.try_into()?).body(body))
 	}
 
 	/// Convert a reqwest request into a requeuest request.
@@ -199,7 +194,7 @@ mod tests {
 		header::{HeaderMap, HeaderValue, AUTHORIZATION},
 		Method, StatusCode,
 	};
-	use url::Url;
+	use url::ParseError;
 
 	use super::Request;
 
@@ -228,9 +223,8 @@ mod tests {
 
 	#[test]
 	fn serialization() {
-		let url = Url::parse("https://example.com/").unwrap();
-		let body = b"Some cool data".to_vec();
-		let request = Request::post(url, body, HeaderMap::default());
+		let request =
+			Request::post("https://example.com/", b"Some cool data".to_vec()).unwrap().build();
 		let serialized = bincode::serialize(&request).unwrap();
 		let deserialized: Request = bincode::deserialize(&serialized).unwrap();
 
@@ -253,6 +247,81 @@ mod tests {
 		assert_eq!(request.body.unwrap(), b"body", "Body mismatch");
 	}
 
+	#[test]
+	fn test_constructors() {
+		let get_request = Request::get("http://get.example").unwrap().build();
+
+		assert_eq!(get_request.url.to_string(), "http://get.example/", "URL mismatch");
+		assert_eq!(get_request.method, Method::GET, "Method mismatch");
+		assert_eq!(get_request.headers, HeaderMap::default(), "Header mismatch");
+		assert_eq!(get_request.body, None, "Body mismatch");
+
+		let delete_request = Request::delete("https://delete.example").unwrap().build();
+
+		assert_eq!(delete_request.url.to_string(), "https://delete.example/", "URL mismatch");
+		assert_eq!(delete_request.method, Method::DELETE, "Method mismatch");
+		assert_eq!(delete_request.headers, HeaderMap::default(), "Header mismatch");
+		assert_eq!(delete_request.body, None, "Body mismatch");
+
+		let head_request = Request::head("https://head.example").unwrap().build();
+
+		assert_eq!(head_request.url.to_string(), "https://head.example/", "URL mismatch");
+		assert_eq!(head_request.method, Method::HEAD, "Method mismatch");
+		assert_eq!(head_request.headers, HeaderMap::default(), "Header mismatch");
+		assert_eq!(head_request.body, None, "Body mismatch");
+
+		let post_request =
+			Request::post("https://post.example", b"example post".to_vec()).unwrap().build();
+
+		assert_eq!(post_request.url.to_string(), "https://post.example/", "URL mismatch");
+		assert_eq!(post_request.method, Method::POST, "Method mismatch");
+		assert_eq!(post_request.headers, HeaderMap::default(), "Header mismatch");
+		assert_eq!(post_request.body.unwrap(), b"example post", "Body mismatch");
+
+		let put_request =
+			Request::put("https://put.example", b"example put".to_vec()).unwrap().build();
+
+		assert_eq!(put_request.url.to_string(), "https://put.example/", "URL mismatch");
+		assert_eq!(put_request.method, Method::PUT, "Method mismatch");
+		assert_eq!(put_request.headers, HeaderMap::default(), "Header mismatch");
+		assert_eq!(put_request.body.unwrap(), b"example put", "Body mismatch");
+	}
+
+	#[test]
+	fn test_builder() {
+		let mut header_map = HeaderMap::new();
+		header_map.insert("AUTHORIZATION", "secret".parse().unwrap());
+		let request = Request::builder()
+			.method(Method::GET)
+			.url("https://foo.bar/".parse().unwrap())
+			.headers(header_map.clone())
+			.build();
+
+		assert_eq!(request.url.to_string(), "https://foo.bar/", "URL mismatch");
+		assert_eq!(request.method, Method::GET, "Method mismatch");
+		assert_eq!(request.headers, header_map, "Header mismatch");
+		assert_eq!(request.body, None, "Body mismatch");
+		assert_eq!(request.accept_responses, crate::request::default_accepted_responses());
+
+		let request = Request::builder()
+			.url("https://foo.bar/".parse().unwrap())
+			.method(Method::POST)
+			.body("body")
+			.build();
+
+		assert_eq!(request.url.to_string(), "https://foo.bar/", "URL mismatch");
+		assert_eq!(request.method, Method::POST, "Method mismatch");
+		assert_eq!(request.headers, HeaderMap::new(), "Header mismatch");
+		assert_eq!(request.body.unwrap(), b"body", "Body mismatch");
+	}
+
+	#[test]
+	fn test_url_parse_error() {
+		let parse_error = Request::delete("test.de").err().unwrap();
+
+		assert_eq!(parse_error, ParseError::RelativeUrlWithoutBase, "Error missmatch");
+	}
+
 	#[cfg(feature = "http")]
 	#[test]
 	fn convert_http_builder() {
@@ -265,7 +334,7 @@ mod tests {
 		assert_eq!(request.body.unwrap(), b"body", "Body mismatch");
 
 		let bad = http::request::Builder::new();
-		assert!(Request::from_http_builder(bad, None).is_none(), "Missing value guard failed");
+		assert!(Request::from_http_builder(bad, None).is_err(), "Missing value guard failed");
 	}
 
 	#[cfg(feature = "http")]

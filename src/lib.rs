@@ -35,10 +35,10 @@
 //! send a get request to an example address:
 //!
 //! ```no_run
-//! use requeuest::{HeaderMap, Request};
+//! use requeuest::Request;
 //!
 //! # async fn test(client: requeuest::Client) -> Result<(), Box<dyn std::error::Error>> {
-//! let request = Request::get("https://foo.bar/_api/baz".parse()?, HeaderMap::new());
+//! let request = Request::get("https://foo.bar/_api/baz")?.build();
 //! client.spawn("my_service", &request).await?;
 //! # Ok(())
 //! # }
@@ -51,8 +51,7 @@
 //! # use requeuest::Request;
 //!
 //! # async fn test(client: requeuest::Client) -> Result<(), Box<dyn std::error::Error>> {
-//! // You can skip the HeaderMap import by invoking the constructor via the Default trait
-//! let request = Request::post("https://example.com/_api/bar/foo".parse()?, Vec::from("some data"), Default::default());
+//! let request = Request::post("https://example.com/_api/bar/foo", Vec::from("some data"))?.build();
 //! let response = client.spawn_returning("my_service", &request).await?;
 //! # Ok(())
 //! # }
@@ -83,7 +82,7 @@ pub use client::Client;
 pub use request::Request;
 pub use reqwest::{self, header::HeaderMap, Method};
 use sqlx::{Pool, Postgres};
-pub use url::Url;
+pub use url::{ParseError, Url};
 pub use uuid::Uuid;
 
 /// Runs the SQL migrations this library needs.
