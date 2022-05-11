@@ -1,15 +1,28 @@
 # Changelog
 
-## [Unreleased]
+## [0.4.0] - 2022-05-11
 
-### Added
+### Features
 
-- Builder interface added to `Request`. Available via `Request::builder()`. ([!42])
+- Function to clear channels of pending jobs
+- [**breaking**] Builder interface added to `Request`. Available via `Request::builder()`. ([!42])
 
 ### Changed
 
 - The methods `Request::{get, head, delete, put, post}` now return a builder
   with the corresponding method. Additionally, they now expect only a url or a url and a body for `post` and `put`.  ([!42])
+
+### Miscellaneous Tasks
+
+- Move to upstream retry check
+- Fix typos
+- Add pre-commit
+- Update files from template
+- Update files from template
+
+### Testing
+
+- Check that AcceptedResponse matches correctly
 
 [!42]: https://gitlab.com/famedly/company/backend/libraries/requeuest/-/merge_requests/42
 
