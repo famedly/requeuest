@@ -23,7 +23,8 @@ http = { version = "0.2", optional = true }
 http-serde = "1.0"
 reqwest = { version = "0.11", default_features = false, features = ["rustls-tls"] }
 sqlx = { version = "0.5", default_features = false, features = ["postgres", "chrono", "uuid"] }
-sqlxmq = { version = "0.3.1", default_features = false }
+# We want to pin to an exact version so library consumers can't use a later version without the required migrations being in place.
+sqlxmq = { version = "=0.3.5", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 bincode = "1.3"
 tokio = { version = "1.11", features = ["sync", "parking_lot"] }
