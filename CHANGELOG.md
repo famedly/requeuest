@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.5.0] - 2022-06-10
+
+### Miscellaneous Tasks
+
+- Bump sqlxmq
+
 ## [0.4.0] - 2022-05-11
 
 ### Features
