@@ -1,6 +1,6 @@
 [package]
 name = "requeuest"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 authors = ["Amanda Graven <amanda@amandag.net>"]
 description = "Queue for HTTP requests using postgres as backing store"
