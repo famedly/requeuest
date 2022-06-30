@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.0] - 2022-06-29
+
+### Miscellaneous Tasks
+
+- Upgrade sqlxmq to 0.4.0
+- Upgrade sqlx to 0.6
+- Upgrade uuid to 1.0
+
 ## [0.5.0] - 2022-06-10
 
 ### Miscellaneous Tasks

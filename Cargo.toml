@@ -1,6 +1,6 @@
 [package]
 name = "requeuest"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 authors = ["Amanda Graven <amanda@amandag.net>"]
 description = "Queue for HTTP requests using postgres as backing store"
@@ -22,19 +22,19 @@ runtime-async-std-native-tls = ["sqlx/runtime-async-std-native-tls"]
 http = { version = "0.2", optional = true }
 http-serde = "1.0"
 reqwest = { version = "0.11", default_features = false, features = ["rustls-tls"] }
-sqlx = { version = "0.5", default_features = false, features = ["postgres", "chrono", "uuid"] }
+sqlx = { version = "0.6", default_features = false, features = ["postgres", "chrono", "uuid"] }
 # We want to pin to an exact version so library consumers can't use a later version without the required migrations being in place.
-sqlxmq = { version = "=0.3.5", default-features = false }
+sqlxmq = { version = "=0.4.0", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 bincode = "1.3"
 tokio = { version = "1.11", features = ["sync", "parking_lot"] }
 url = { version = "2", features = ["serde"] }
-uuid = { version = "0.8", features = ["v4"] }
+uuid = { version = "1.0", features = ["v4"] }
 typed-builder = "0.10.0"
 
 [dev-dependencies]
 color-eyre = { version = "0.6", default_features = false }
 hyper = { version = "0.14", features = ["server", "runtime", "tcp", "http2"] }
-ntest = "0.7"
-sqlx = { version = "0.5", default_features = false, features = ["postgres", "chrono", "uuid", "runtime-tokio-rustls"] }
-sqlx-database-tester = { git = "https://gitlab.com/famedly/company/backend/libraries/sqlx-database-tester.git", rev = "acecb522", features = ["runtime-tokio"] }
+ntest = "0.8"
+sqlx = { version = "0.6", default_features = false, features = ["postgres", "chrono", "uuid", "runtime-tokio-rustls"] }
+sqlx-database-tester = { version = "0.4", features = ["runtime-tokio"] }
