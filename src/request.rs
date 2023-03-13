@@ -67,7 +67,7 @@ impl AcceptedResponse {
 
 /// Returns the set of responses which are considered valid by default
 fn default_accepted_responses() -> HashSet<AcceptedResponse> {
-	IntoIterator::into_iter([AcceptedResponse::Success]).into_iter().collect()
+	[AcceptedResponse::Success].into_iter().collect()
 }
 
 /// Return builder type for methods with predefined method
