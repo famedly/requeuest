@@ -99,7 +99,7 @@ impl Client {
 	/// client.spawn("my_service", &request).await?;
 	/// # Ok(())
 	/// # }
-	pub async fn spawn<'a, C: Into<Cow<'static, str>>>(
+	pub async fn spawn<'a, C: Into<Cow<'static, str>> + Send>(
 		&'a self,
 		channel: C,
 		request: &'a Request,
@@ -134,11 +134,11 @@ impl Client {
 	/// # Ok(())
 	/// # }
 	/// ```
-	pub async fn spawn_cfg<'a, C: Into<Cow<'static, str>>>(
+	pub async fn spawn_cfg<'a, C: Into<Cow<'static, str>> + Send>(
 		&'a self,
 		channel: C,
 		request: &'a Request,
-		cfg: impl for<'b> FnOnce(&'b mut JobBuilder),
+		cfg: impl for<'b> FnOnce(&'b mut JobBuilder) + Send,
 	) -> Result<Uuid, SpawnError> {
 		let mut builder = job::http.builder();
 
@@ -160,7 +160,7 @@ impl Client {
 	/// will wait indefinitely until a succressful response has been received,
 	/// so be careful that your request is correctly constructed, and that you
 	/// don't inadvertently hang your program when calling this ethod.
-	pub async fn spawn_returning<'a, C: Into<Cow<'static, str>>>(
+	pub async fn spawn_returning<'a, C: Into<Cow<'static, str>> + Send>(
 		&'a self,
 		channel: C,
 		request: &'a Request,
@@ -192,11 +192,11 @@ impl Client {
 	/// * [Initial retry backoff](sqlxmq::JobBuilder::set_retry_backoff)
 	/// * [If the job is ordered](sqlxmq::JobBuilder::set_ordered)
 	/// * [Delay before execution](sqlxmq::JobBuilder::set_delay)
-	pub async fn spawn_returning_cfg<'a, C: Into<Cow<'static, str>>>(
+	pub async fn spawn_returning_cfg<'a, C: Into<Cow<'static, str>> + Send>(
 		&'a self,
 		channel: C,
 		request: &'a Request,
-		cfg: impl for<'b> FnOnce(&'b mut JobBuilder),
+		cfg: impl for<'b> FnOnce(&'b mut JobBuilder) + Send,
 	) -> Result<reqwest::Response, SpawnError> {
 		// Put a sender in the sender map so the job can use it
 		let uuid = Uuid::new_v4();
