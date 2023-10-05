@@ -1,20 +1,8 @@
 # Requeuest
 
-[![pipeline status][badge-pipeline-img]][badge-pipeline-url]
-[![coverage report][badge-coverage-img]][badge-coverage-url]
-[![documentation (docs.rs)][badge-docs-release-img]][badge-docs-release-url]
-[![documentation (main)][badge-docs-main-img]][badge-docs-main-url]
-
-[badge-pipeline-img]: https://gitlab.com/famedly/company/backend/libraries/requeuest/badges/main/pipeline.svg
-[badge-pipeline-url]: https://gitlab.com/famedly/company/backend/libraries/requeuest/-/commits/main
-[badge-coverage-img]: https://gitlab.com/famedly/company/backend/libraries/requeuest/badges/main/coverage.svg
-[badge-coverage-url]: https://gitlab.com/famedly/company/backend/libraries/requeuest/-/commits/main
-[badge-docs-release-img]: https://img.shields.io/crates/v/requeuest?label=docs&color=informational
-[badge-docs-release-url]: https://docs.rs/requeuest
-[badge-docs-main-img]: https://img.shields.io/badge/docs-main-informational
-[badge-docs-main-url]: https://famedly.gitlab.io/company/backend/libraries/requeuest/requeuest/index.html
-
+<p align=center>
 ![requeuest logo](logo.svg)
+</p>
 
 Requeuest (pronounced "recused") is a message queue which acts as an intermediary for HTTP requests, making sure that the sent request gets successfully delivered eventually, meaning that you do not have to implement retry logic for HTTP API requests. The queue uses the [`sqlxmq`] crate to make postgres its store for messages, which avoids the reliability risk of a dedicated message queue service potentially being down. This comes with the trade-off that job runners become part of the library consumer's process, and that a handle to the runner has to be kept alive so jobs can run in the background, since jobs cannot be delegated to a separate runner service.
 
@@ -57,7 +45,7 @@ Note that the `spawn_returning` method *will* wait indefinitely (or to be precis
 ## Testing
 requeuest's integration tests rely on [`sqlx-database-tester`], which expects a postgres database to be available with a user that has permissions to create, edit and drop databases. Which database(s) to use is set with a postgres url (e.g. `postgres://postgres:password@localhost/`) in the `DATABASE_URL` environment variable, or with an entry in a `.env`. See `sqlx-database-tester`'s documentation for more information.
 
-[`sqlx-database-tester`]: https://gitlab.com/famedly/company/backend/libraries/sqlx-database-tester
+[`sqlx-database-tester`]: https://github.com/famedly/sqlx-database-tester
 
 ## Pre-commit usage
 

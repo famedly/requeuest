@@ -156,7 +156,7 @@ async fn order() -> color_eyre::eyre::Result<()> {
 	let request2 = Request::post(url.clone(), b"2".to_vec())?.build();
 	let request3 = Request::post(url.clone(), b"3".to_vec())?.build();
 
-	let handle = tokio::spawn(async move { server.await });
+	let handle = tokio::spawn(server);
 
 	let cfg = |job: &mut sqlxmq::JobBuilder| {
 		job.set_ordered(true);
