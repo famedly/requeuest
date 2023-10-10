@@ -319,7 +319,7 @@ mod tests {
 	fn test_url_parse_error() {
 		let parse_error = Request::delete("test.de").err().unwrap();
 
-		assert_eq!(parse_error, ParseError::RelativeUrlWithoutBase, "Error missmatch");
+		assert_eq!(parse_error, ParseError::RelativeUrlWithoutBase, "Error mismatch");
 	}
 
 	#[cfg(feature = "http")]
