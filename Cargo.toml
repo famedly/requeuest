@@ -19,7 +19,7 @@ runtime-async-std-rustls = ["sqlx/runtime-async-std-rustls"]
 runtime-async-std-native-tls = ["sqlx/runtime-async-std-native-tls"]
 
 [dependencies]
-http = { version = "0.2", optional = true }
+http = { version = "1.1", optional = true }
 http-serde = "1.0"
 reqwest = { version = "0.11", default_features = false, features = ["rustls-tls"] }
 sqlx = { version = "0.6", default_features = false, features = ["postgres", "chrono", "uuid"] }
