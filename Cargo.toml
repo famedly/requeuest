@@ -21,7 +21,7 @@ runtime-async-std-native-tls = ["sqlx/runtime-async-std-native-tls"]
 [dependencies]
 http = { version = "0.2", optional = true }
 http-serde = "1.0"
-reqwest = { version = "0.11", default_features = false, features = ["rustls-tls"] }
+reqwest = { version = "0.12", default_features = false, features = ["rustls-tls"] }
 sqlx = { version = "0.6", default_features = false, features = ["postgres", "chrono", "uuid"] }
 # We want to pin to an exact version so library consumers can't use a later version without the required migrations being in place.
 sqlxmq = { version = "=0.4.0", default-features = false }
