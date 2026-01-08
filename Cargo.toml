@@ -10,21 +10,19 @@ readme = "README.md"
 license = "AGPL-3.0-only"
 
 [features]
-default = [ "runtime-tokio-rustls" ]
+default = ["runtime-tokio-rustls"]
 runtime-tokio-rustls = ["sqlx/runtime-tokio-rustls"]
 runtime-tokio-native-tls = ["sqlx/runtime-tokio-native-tls"]
-runtime-actix-rustls = ["sqlx/runtime-actix-rustls"]
-runtime-actix-native-tls = ["sqlx/runtime-actix-native-tls"]
 runtime-async-std-rustls = ["sqlx/runtime-async-std-rustls"]
 runtime-async-std-native-tls = ["sqlx/runtime-async-std-native-tls"]
 
 [dependencies]
 http = { version = "0.2", optional = true }
 http-serde = "1.0"
-reqwest = { version = "0.11", default_features = false, features = ["rustls-tls"] }
-sqlx = { version = "0.6", default_features = false, features = ["postgres", "chrono", "uuid"] }
+reqwest = { version = "0.11", default-features = false, features = ["rustls-tls"] }
+sqlx = { version = "0.8", default-features = false, features = ["postgres", "chrono", "uuid"] }
 # We want to pin to an exact version so library consumers can't use a later version without the required migrations being in place.
-sqlxmq = { version = "=0.4.0", default-features = false }
+sqlxmq = { git = "https://github.com/famedly/sqlxmq.git", tag = "v0.6.2", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 bincode = "1.3"
 tokio = { version = "1.11", features = ["sync", "parking_lot"] }
@@ -33,8 +31,8 @@ uuid = { version = "1.0", features = ["v4"] }
 typed-builder = "0.10.0"
 
 [dev-dependencies]
-color-eyre = { version = "0.6", default_features = false }
+color-eyre = { version = "0.6", default-features = false }
 hyper = { version = "0.14", features = ["server", "runtime", "tcp", "http2"] }
 ntest = "0.8"
-sqlx = { version = "0.6", default_features = false, features = ["postgres", "chrono", "uuid", "runtime-tokio-rustls"] }
-sqlx-database-tester = { version = "0.4", features = ["runtime-tokio"] }
+sqlx = { version = "0.8", default-features = false, features = ["postgres", "chrono", "uuid", "runtime-tokio-rustls"] }
+sqlx-database-tester = { git = "https://github.com/famedly/sqlx-database-tester.git", tag = "v0.5.1", features = ["runtime-tokio"] }

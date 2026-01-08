@@ -28,7 +28,7 @@ impl ResponseSender {
 	}
 
 	/// Gets a lock to the mutex wrapping the map.
-	pub fn lock(&self) -> LockResult<MutexGuard<SenderMap>> {
+	pub fn lock(&self) -> LockResult<MutexGuard<'_, SenderMap>> {
 		self.0.lock()
 	}
 }

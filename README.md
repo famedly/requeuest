@@ -13,7 +13,7 @@ Assuming you already have an `sqlx` connection to a postgres database, you will 
 requeuest::migrate(&pool).await?;
 ```
 
-Once that's taken care of, start by constructing a client. This is what you will use to spawn requests, an what will execute jobs in the background. It will keep doing so until it is dropped. The client contains a tokio `JoinHandle` which you can remove from the client with the `Client::take_listener` method if you want the listener to keep running after the client has dropped, or otherwise interface with the background task directly.
+Once that's taken care of, start by constructing a client. This is what you will use to spawn requests, an what will execute jobs in the background. It will keep doing so until it is dropped. The client contains a job runner handle which you can remove from the client with the `Client::take_listener` method if you want the listener to keep running after the client has dropped, or otherwise interface with the background task directly.
 
 ```rust
 use requeuest::Client;

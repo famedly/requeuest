@@ -16,8 +16,8 @@
 //!
 //! Once that's taken care of, start by constructing a client. This is what you
 //! will use to spawn requests, an what will execute jobs in the background. It
-//! will keep doing so until it is dropped. The client contains a tokio
-//! `JoinHandle` which you can remove from the client with
+//! will keep doing so until it is dropped. The client contains a job runner
+//! handle which you can remove from the client with
 //! [`Client::take_listener`](crate::Client::take_listener) if you want the
 //! listener to keep running after the client has dropped, or otherwise
 //! interface with the background task directly.

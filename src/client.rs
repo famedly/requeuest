@@ -4,7 +4,7 @@
 use std::borrow::Cow;
 
 use sqlx::PgPool;
-use sqlxmq::{JobBuilder, JobRegistry};
+use sqlxmq::{JobBuilder, JobRegistry, JobRunnerHandle};
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
@@ -25,15 +25,24 @@ pub enum Channels<'a> {
 }
 
 /// The client is used for listening for and spawning new jobs.
-#[derive(Debug)]
 pub struct Client {
 	/// The database connection pool.
 	pool: PgPool,
 	/// The handle to the tokio task which listens for and spawns jobs in the
 	/// background.
-	listener: Option<sqlxmq::OwnedHandle>,
+	listener: Option<JobRunnerHandle>,
 	/// A map of oneshot channels which successful responses are sent through.
 	response_sender: ResponseSender,
+}
+
+impl std::fmt::Debug for Client {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Client")
+			.field("pool", &self.pool)
+			.field("listener_attached", &self.listener.is_some())
+			.field("response_sender", &self.response_sender)
+			.finish()
+	}
 }
 
 impl Client {
@@ -55,14 +64,11 @@ impl Client {
 		Ok(Self { pool, listener: Some(listener.run().await?), response_sender })
 	}
 
-	/// Takes the tokio `JoinHandle` which listens for and runs spawned jobs,
-	/// and prevents it from being aborted when the client is dropped. Returns
+	/// Takes the job runner handle which listens for and runs spawned jobs,
+	/// preventing it from being aborted when the client is dropped. Returns
 	/// `None` if the handle has already been taken.
-	pub fn take_listener(&mut self) -> Option<tokio::task::JoinHandle<()>> {
-		if let Some(handle) = self.listener.take() {
-			return Some(handle.into_inner());
-		}
-		None
+	pub fn take_listener(&mut self) -> Option<JobRunnerHandle> {
+		self.listener.take()
 	}
 
 	/// Returns true if the handle to the listener has been taken out of the
