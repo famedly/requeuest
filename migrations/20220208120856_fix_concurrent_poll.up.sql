@@ -59,4 +59,4 @@ BEGIN
         AND (channel_names IS NULL OR mq_msgs.channel_name = ANY(channel_names));
     END IF;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public;

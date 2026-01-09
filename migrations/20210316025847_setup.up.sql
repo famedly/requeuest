@@ -48,7 +48,7 @@ CREATE FUNCTION mq_uuid_exists(
     id UUID
 ) RETURNS BOOLEAN AS $$
 	SELECT id IS NOT NULL AND id != public.uuid_nil()
-$$ LANGUAGE SQL IMMUTABLE;
+$$ LANGUAGE SQL IMMUTABLE SET search_path = public;
 
 -- Index for polling
 CREATE INDEX ON mq_msgs(channel_name, channel_args, attempt_at) WHERE id != public.uuid_nil() AND NOT mq_uuid_exists(after_message_id);
@@ -82,7 +82,7 @@ RETURNS UUID AS $$
         ),
         public.uuid_nil()
     )
-$$ LANGUAGE SQL STABLE;
+$$ LANGUAGE SQL STABLE SET search_path = public;
 
 -- Internal helper function to randomly select a set of channels with "ready" messages.
 CREATE FUNCTION mq_active_channels(channel_names TEXT[], batch_size INT)
@@ -96,7 +96,7 @@ RETURNS TABLE(name TEXT, args TEXT) AS $$
     GROUP BY channel_name, channel_args
     ORDER BY RANDOM()
     LIMIT batch_size
-$$ LANGUAGE SQL STABLE;
+$$ LANGUAGE SQL STABLE SET search_path = public;
 
 -- Main entry-point for job runner: pulls a batch of messages from the queue.
 CREATE FUNCTION mq_poll(channel_names TEXT[], batch_size INT DEFAULT 1)
@@ -157,7 +157,7 @@ BEGIN
         AND (channel_names IS NULL OR mq_msgs.channel_name = ANY(channel_names));
     END IF;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public;
 
 -- Creates new messages
 CREATE FUNCTION mq_insert(new_messages mq_new_t[])
@@ -210,7 +210,7 @@ BEGIN
             END
     FROM UNNEST(new_messages);
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public;
 
 -- Commits messages previously created with a non-NULL commit interval.
 CREATE FUNCTION mq_commit(msg_ids UUID[])
@@ -223,7 +223,7 @@ BEGIN
     WHERE id = ANY(msg_ids)
     AND commit_interval IS NOT NULL;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public;
 
 
 -- Deletes messages from the queue. This occurs when a message has been
@@ -244,7 +244,7 @@ BEGIN
     DELETE FROM mq_msgs WHERE id = ANY(msg_ids);
     DELETE FROM mq_payloads WHERE id = ANY(msg_ids);
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public;
 
 
 -- Can be called during the initial commit interval, or when processing
@@ -259,7 +259,7 @@ RETURNS VOID AS $$
         commit_interval = commit_interval + ((NOW() + duration) - attempt_at)
     WHERE id = ANY(msg_ids)
     AND attempt_at < NOW() + duration;
-$$ LANGUAGE SQL;
+$$ LANGUAGE SQL SET search_path = public;
 
 
 -- Called during lengthy processing of a message to checkpoint the progress.
@@ -285,4 +285,4 @@ RETURNS VOID AS $$
         payload_bytes = COALESCE(new_payload_bytes, payload_bytes)
     WHERE
         id = msg_id;
-$$ LANGUAGE SQL;
+$$ LANGUAGE SQL SET search_path = public;

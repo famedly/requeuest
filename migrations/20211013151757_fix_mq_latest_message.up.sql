@@ -16,4 +16,4 @@ RETURNS UUID AS $$
         ),
         public.uuid_nil()
     )
-$$ LANGUAGE SQL STABLE;
+$$ LANGUAGE SQL STABLE SET search_path = public;
