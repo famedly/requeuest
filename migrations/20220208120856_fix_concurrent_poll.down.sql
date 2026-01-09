@@ -21,7 +21,7 @@ BEGIN
         FROM mq_active_channels(channel_names, batch_size) AS active_channels
         INNER JOIN LATERAL (
             SELECT * FROM mq_msgs
-            WHERE mq_msgs.id != uuid_nil()
+            WHERE mq_msgs.id != public.uuid_nil()
             AND mq_msgs.attempt_at <= NOW()
             AND mq_msgs.channel_name = active_channels.name
             AND mq_msgs.channel_args = active_channels.args
@@ -52,7 +52,7 @@ BEGIN
             NULL::INTERVAL,
             MIN(mq_msgs.attempt_at) - NOW()
         FROM mq_msgs
-        WHERE mq_msgs.id != uuid_nil()
+        WHERE mq_msgs.id != public.uuid_nil()
         AND NOT mq_uuid_exists(mq_msgs.after_message_id)
         AND (channel_names IS NULL OR mq_msgs.channel_name = ANY(channel_names));
     END IF;

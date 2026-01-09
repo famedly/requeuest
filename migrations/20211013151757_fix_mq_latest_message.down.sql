@@ -6,10 +6,10 @@ RETURNS UUID AS $$
             WHERE channel_name = from_channel_name
             AND channel_args = from_channel_args
             AND after_message_id IS NOT NULL
-            AND id != uuid_nil()
+            AND id != public.uuid_nil()
             ORDER BY created_at DESC, id DESC
             LIMIT 1
         ),
-        uuid_nil()
+        public.uuid_nil()
     )
 $$ LANGUAGE SQL STABLE;

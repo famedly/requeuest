@@ -37,23 +37,23 @@ CREATE TABLE mq_msgs (
     channel_name TEXT NOT NULL,
     channel_args TEXT NOT NULL,
     commit_interval INTERVAL,
-    after_message_id UUID DEFAULT uuid_nil() REFERENCES mq_msgs(id) ON DELETE SET DEFAULT
+    after_message_id UUID DEFAULT public.uuid_nil() REFERENCES mq_msgs(id) ON DELETE SET DEFAULT
 );
 
 -- Insert dummy message so that the 'nil' UUID can be referenced
-INSERT INTO mq_msgs (id, channel_name, channel_args, after_message_id) VALUES (uuid_nil(), '', '', NULL);
+INSERT INTO mq_msgs (id, channel_name, channel_args, after_message_id) VALUES (public.uuid_nil(), '', '', NULL);
 
 -- Internal helper function to check that a UUID is neither NULL nor NIL
 CREATE FUNCTION mq_uuid_exists(
     id UUID
 ) RETURNS BOOLEAN AS $$
-	SELECT id IS NOT NULL AND id != uuid_nil()
+	SELECT id IS NOT NULL AND id != public.uuid_nil()
 $$ LANGUAGE SQL IMMUTABLE;
 
 -- Index for polling
-CREATE INDEX ON mq_msgs(channel_name, channel_args, attempt_at) WHERE id != uuid_nil() AND NOT mq_uuid_exists(after_message_id);
+CREATE INDEX ON mq_msgs(channel_name, channel_args, attempt_at) WHERE id != public.uuid_nil() AND NOT mq_uuid_exists(after_message_id);
 -- Index for adding messages
-CREATE INDEX ON mq_msgs(channel_name, channel_args, created_at, id) WHERE id != uuid_nil() AND after_message_id IS NOT NULL;
+CREATE INDEX ON mq_msgs(channel_name, channel_args, created_at, id) WHERE id != public.uuid_nil() AND after_message_id IS NOT NULL;
 
 -- Index for ensuring strict message order
 CREATE UNIQUE INDEX ON mq_msgs(channel_name, channel_args, after_message_id);
@@ -76,11 +76,11 @@ RETURNS UUID AS $$
             WHERE channel_name = from_channel_name
             AND channel_args = from_channel_args
             AND after_message_id IS NOT NULL
-            AND id != uuid_nil()
+            AND id != public.uuid_nil()
             ORDER BY created_at DESC, id DESC
             LIMIT 1
         ),
-        uuid_nil()
+        public.uuid_nil()
     )
 $$ LANGUAGE SQL STABLE;
 
@@ -89,7 +89,7 @@ CREATE FUNCTION mq_active_channels(channel_names TEXT[], batch_size INT)
 RETURNS TABLE(name TEXT, args TEXT) AS $$
     SELECT channel_name, channel_args
     FROM mq_msgs
-    WHERE id != uuid_nil()
+    WHERE id != public.uuid_nil()
     AND attempt_at <= NOW()
     AND (channel_names IS NULL OR channel_name = ANY(channel_names))
     AND NOT mq_uuid_exists(after_message_id)
@@ -121,7 +121,7 @@ BEGIN
         FROM mq_active_channels(channel_names, batch_size) AS active_channels
         INNER JOIN LATERAL (
             SELECT * FROM mq_msgs
-            WHERE mq_msgs.id != uuid_nil()
+            WHERE mq_msgs.id != public.uuid_nil()
             AND mq_msgs.attempt_at <= NOW()
             AND mq_msgs.channel_name = active_channels.name
             AND mq_msgs.channel_args = active_channels.args
@@ -152,7 +152,7 @@ BEGIN
             NULL::INTERVAL,
             MIN(mq_msgs.attempt_at) - NOW()
         FROM mq_msgs
-        WHERE mq_msgs.id != uuid_nil()
+        WHERE mq_msgs.id != public.uuid_nil()
         AND NOT mq_uuid_exists(mq_msgs.after_message_id)
         AND (channel_names IS NULL OR mq_msgs.channel_name = ANY(channel_names));
     END IF;
@@ -234,7 +234,7 @@ BEGIN
     PERFORM pg_notify(CONCAT('mq_', channel_name), '')
     FROM mq_msgs
     WHERE id = ANY(msg_ids)
-    AND after_message_id = uuid_nil()
+    AND after_message_id = public.uuid_nil()
     GROUP BY channel_name;
 
     IF FOUND THEN
