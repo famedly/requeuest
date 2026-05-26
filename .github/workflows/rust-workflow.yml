@@ -31,7 +31,7 @@ jobs:
           gitlab_ssh: ${{ secrets.CI_SSH_PRIVATE_KEY}}
 
       - name: Caching
-        uses: Swatinem/rust-cache@b8a6852b4f997182bdea832df3f9e153038b5191
+        uses: Swatinem/rust-cache@65012b490220f477f20ab979e35ae732e6de4e68
         with:
           shared-key: "stable"
 
@@ -79,7 +79,7 @@ jobs:
           gitlab_ssh: ${{ secrets.CI_SSH_PRIVATE_KEY}}
 
       - name: Caching
-        uses: Swatinem/rust-cache@b8a6852b4f997182bdea832df3f9e153038b5191
+        uses: Swatinem/rust-cache@65012b490220f477f20ab979e35ae732e6de4e68
         with:
           shared-key: "stable"
           workspaces: "head -> target"
@@ -94,13 +94,13 @@ jobs:
       - name: Load base coverage results from cache
         if: github.event_name == 'pull_request'
         id: cache-coverage
-        uses: actions/cache@v3
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae
         with:
           path: ./old-cov.lcov
           key: coverage-${{ github.event.pull_request.base.sha }}
 
       - name: Pull base
-        uses: actions/checkout@v3
+        uses: actions/checkout@900f2210b1d28bbbd0bd22d17926b9e224e8f231
         if: github.event_name == 'pull_request' && steps.cache-coverage.outputs.cache-hit != 'true'
         with:
           ref: ${{ github.event.pull_request.base.ref }}
@@ -116,7 +116,7 @@ jobs:
     
       - name: Meow Coverage
         id: coverage-report
-        uses: famedly/meow-coverage@main
+        uses: famedly/meow-coverage@ead50e2b41ca1c2f47b9367b374e588ac8a419d9
         if: github.event_name == 'pull_request'
         with:
           new-lcov-file: 'new-cov.lcov'
@@ -140,7 +140,7 @@ jobs:
           gitlab_ssh: ${{ secrets.CI_SSH_PRIVATE_KEY}}
 
       - name: Caching
-        uses: Swatinem/rust-cache@b8a6852b4f997182bdea832df3f9e153038b5191
+        uses: Swatinem/rust-cache@65012b490220f477f20ab979e35ae732e6de4e68
         with:
           shared-key: "nightly"
 
@@ -164,7 +164,7 @@ jobs:
           gitlab_ssh: ${{ secrets.CI_SSH_PRIVATE_KEY}}
 
       - name: Caching
-        uses: Swatinem/rust-cache@b8a6852b4f997182bdea832df3f9e153038b5191
+        uses: Swatinem/rust-cache@65012b490220f477f20ab979e35ae732e6de4e68
         with:
           shared-key: "nightly"
 
